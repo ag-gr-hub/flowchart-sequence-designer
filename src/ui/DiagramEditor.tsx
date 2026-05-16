@@ -9,12 +9,37 @@ import { toSVG, toPNG } from '../exporters/svg.js';
 import { fromMermaid } from '../importers/mermaid.js';
 import { fromJSON } from '../importers/json.js';
 
-const NODE_W = 152;
+// Fixed heights; widths are dynamic per-node
 const NODE_H = 48;
-const Q_W = 240;
-const Q_BASE_H = 68;  // question header height
-const Q_ANS_H = 54;   // per-answer row height (card + port zone)
+const Q_BASE_H = 68;
+const Q_ANS_H = 54;
 const GRID = 24;
+
+// Width bounds
+const MIN_NODE_W = 120;
+const MAX_NODE_W = 320;
+const MIN_Q_W = 220;
+const MAX_Q_W = 400;
+
+/** Estimate text width at ~7.5px/char (13px ui-sans-serif mixed-case). */
+function estimateTextW(text: string, pxPerChar = 7.5): number {
+  return text.length * pxPerChar;
+}
+
+/** Dynamic width for standard nodes based on label length. */
+function nodeWidth(label: string): number {
+  return Math.min(MAX_NODE_W, Math.max(MIN_NODE_W, Math.ceil(estimateTextW(label) + 48)));
+}
+
+/** Dynamic width for question nodes — driven by header label + longest answer. */
+function questionNodeW(node: DiagramNode): number {
+  const answers = (node.metadata?.answers as string[] | undefined) ?? [];
+  // Header: badge (48px) + label text + right padding
+  const headerW = estimateTextW(node.label, 8) + 80;
+  // Answer row: letter badge (44px) + answer text + padding
+  const maxAnsW = answers.reduce((m, a) => Math.max(m, estimateTextW(a, 7.5) + 90), 0);
+  return Math.min(MAX_Q_W, Math.max(MIN_Q_W, Math.ceil(Math.max(headerW, maxAnsW))));
+}
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 export interface ThemeColors {
@@ -140,12 +165,12 @@ function variantAccent(variant: DiagramVariant, isDark: boolean) {
 }
 
 // ── Standard node shape ────────────────────────────────────────────────────
-function NodeShape({ node, selected, variant, stepNumber, t, isDark }: {
+function NodeShape({ node, selected, variant, stepNumber, t, isDark, w }: {
   node: DiagramNode; selected: boolean; variant: DiagramVariant;
-  stepNumber?: number; t: ThemeColors; isDark: boolean;
+  stepNumber?: number; t: ThemeColors; isDark: boolean; w: number;
 }) {
   const acc = variantAccent(variant, isDark);
-  const cx = NODE_W / 2, cy = NODE_H / 2;
+  const cx = w / 2, cy = NODE_H / 2;
   const stroke = selected ? acc.color : t.nodeStroke;
   const fill = selected ? t.nodeSelectedFill : t.nodeFill;
   const sw = selected ? 2 : 1.5;
@@ -155,8 +180,8 @@ function NodeShape({ node, selected, variant, stepNumber, t, isDark }: {
       {node.shape === 'circle'
         ? <circle cx={cx} cy={cy} r={NODE_H / 2 + 5} fill={acc.glow} />
         : node.shape === 'diamond'
-        ? <polygon points={`${cx},${-7} ${NODE_W + 7},${cy} ${cx},${NODE_H + 7} ${-7},${cy}`} fill={acc.glow} />
-        : <rect x={-5} y={-5} width={NODE_W + 10} height={NODE_H + 10} rx={16} fill={acc.glow} />}
+        ? <polygon points={`${cx},${-7} ${w + 7},${cy} ${cx},${NODE_H + 7} ${-7},${cy}`} fill={acc.glow} />
+        : <rect x={-5} y={-5} width={w + 10} height={NODE_H + 10} rx={16} fill={acc.glow} />}
     </g>
   );
 
@@ -170,24 +195,24 @@ function NodeShape({ node, selected, variant, stepNumber, t, isDark }: {
 
   switch (node.shape) {
     case 'diamond': {
-      const pts = `${cx},0 ${NODE_W},${cy} ${cx},${NODE_H} 0,${cy}`;
+      const pts = `${cx},0 ${w},${cy} ${cx},${NODE_H} 0,${cy}`;
       return <>{glow}<polygon points={pts} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
     }
     case 'circle':
       return <>{glow}<circle cx={cx} cy={cy} r={NODE_H / 2 - 1} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
     case 'parallelogram':
-      return <>{glow}<polygon points={`14,0 ${NODE_W},0 ${NODE_W - 14},${NODE_H} 0,${NODE_H}`} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
+      return <>{glow}<polygon points={`14,0 ${w},0 ${w - 14},${NODE_H} 0,${NODE_H}`} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
     default:
-      return <>{glow}<rect width={NODE_W} height={NODE_H} rx={12} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
+      return <>{glow}<rect width={w} height={NODE_H} rx={12} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
   }
 }
 
 // ── Question node ──────────────────────────────────────────────────────────
 const ANSWER_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown }: {
+function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, qW }: {
   node: DiagramNode; selected: boolean; edges: DiagramEdge[];
-  isDark: boolean;
+  isDark: boolean; qW: number;
   onAnswerPortDown: (e: React.MouseEvent, nodeId: string, answer: string, portY: number) => void;
 }) {
   const answers: string[] = (node.metadata?.answers as string[] | undefined) ?? [];
@@ -205,31 +230,28 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown }: {
   const textSub = isDark ? '#64748b' : '#94a3b8';
   const textAns = isDark ? '#cbd5e1' : '#374151';
 
+  // Max chars for answer text before truncation: based on available space
+  const maxAnsChars = Math.floor((qW - 90) / 7.5);
+
   // Glow ring when selected
   const glow = selected && (
     <g style={{ filter: 'blur(10px)' }}>
-      <rect x={-8} y={-8} width={Q_W + 16} height={totalH + 16} rx={18} fill={isDark ? 'rgba(251,191,36,0.18)' : 'rgba(251,191,36,0.25)'} />
+      <rect x={-8} y={-8} width={qW + 16} height={totalH + 16} rx={18} fill={isDark ? 'rgba(251,191,36,0.18)' : 'rgba(251,191,36,0.25)'} />
     </g>
   );
-
-  // Header height uses Q_BASE_H; clip question text if long
-  const labelText = node.label.length > 28 ? node.label.slice(0, 26) + '…' : node.label;
-  const labelLine2 = node.label.length > 14
-    ? [node.label.slice(0, 20), node.label.slice(20, 40)].filter(Boolean)
-    : [node.label];
 
   return (
     <>
       {glow}
 
       {/* Card body */}
-      <rect width={Q_W} height={totalH} rx={14} fill={nodeBg} stroke={nodeBorder} strokeWidth={selected ? 2 : 1.5} filter="url(#nodeShadow)" />
+      <rect width={qW} height={totalH} rx={14} fill={nodeBg} stroke={nodeBorder} strokeWidth={selected ? 2 : 1.5} filter="url(#nodeShadow)" />
 
       {/* Header tinted zone */}
       <clipPath id={`qhdr-${node.id}`}>
-        <rect width={Q_W} height={Q_BASE_H} rx={14} />
+        <rect width={qW} height={Q_BASE_H} rx={14} />
       </clipPath>
-      <rect width={Q_W} height={Q_BASE_H} fill={amberSoft} clipPath={`url(#qhdr-${node.id})`} />
+      <rect width={qW} height={Q_BASE_H} fill={amberSoft} clipPath={`url(#qhdr-${node.id})`} />
 
       {/* Amber left accent bar */}
       <rect x={0} y={0} width={4} height={Q_BASE_H} rx={2} fill={amber} />
@@ -243,20 +265,20 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown }: {
         fontFamily="ui-sans-serif,system-ui,sans-serif">
         <tspan x={50} y={27} fontSize={9} fontWeight={700} fill={textSub} letterSpacing={0.6} textAnchor="start">QUESTION</tspan>
         <tspan x={50} dy={15} fontSize={13} fontWeight={700} fill={selected ? amber : textMain} textAnchor="start">
-          {node.label.length > 22 ? node.label.slice(0, 20) + '…' : node.label}
+          {node.label}
         </tspan>
       </text>
 
       {/* Divider */}
-      <line x1={0} y1={Q_BASE_H} x2={Q_W} y2={Q_BASE_H} stroke={amberLine} strokeWidth={1} />
+      <line x1={0} y1={Q_BASE_H} x2={qW} y2={Q_BASE_H} stroke={amberLine} strokeWidth={1} />
 
       {/* Empty state */}
       {answers.length === 0 && (
         <>
-          <text x={Q_W / 2} y={Q_BASE_H + 22} textAnchor="middle" fontSize={10} fill={amber} opacity={0.4} fontWeight={600} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+          <text x={qW / 2} y={Q_BASE_H + 22} textAnchor="middle" fontSize={10} fill={amber} opacity={0.4} fontWeight={600} style={{ pointerEvents: 'none', userSelect: 'none' }}>
             No answers yet
           </text>
-          <text x={Q_W / 2} y={Q_BASE_H + 36} textAnchor="middle" fontSize={9} fill={textSub} opacity={0.7} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+          <text x={qW / 2} y={Q_BASE_H + 36} textAnchor="middle" fontSize={9} fill={textSub} opacity={0.7} style={{ pointerEvents: 'none', userSelect: 'none' }}>
             Open panel → Add Answer
           </text>
         </>
@@ -265,7 +287,6 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown }: {
       {/* Answer rows */}
       {answers.map((ans, i) => {
         const rowY = Q_BASE_H + i * Q_ANS_H;
-        // Answer card occupies top 38px of the 54px band; port in the remaining 16px
         const cardY = rowY + 5;
         const cardH = 38;
         const cardMidY = cardY + cardH / 2;
@@ -275,14 +296,15 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown }: {
         const targetNode = connected
           ? edges.filter(e => e.from === node.id && e.label === ans).map(e => e.to)[0]
           : null;
+        const displayAns = ans.length > maxAnsChars ? ans.slice(0, maxAnsChars - 1) + '…' : ans;
 
         return (
           <g key={ans + i}>
             {/* Row separator */}
-            {i > 0 && <line x1={8} y1={rowY} x2={Q_W - 8} y2={rowY} stroke={amberLine} strokeWidth={0.5} />}
+            {i > 0 && <line x1={8} y1={rowY} x2={qW - 8} y2={rowY} stroke={amberLine} strokeWidth={0.5} />}
 
             {/* Answer card */}
-            <rect x={8} y={cardY} width={Q_W - 16} height={cardH} rx={8}
+            <rect x={8} y={cardY} width={qW - 16} height={cardH} rx={8}
               fill={connected ? cardBgConnected : cardBg}
               stroke={connected ? amberLine : cardBorder} strokeWidth={1} />
 
@@ -300,12 +322,12 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown }: {
               fill={connected ? (isDark ? '#fef3c7' : '#92400e') : textAns}
               fontFamily="ui-sans-serif,system-ui,sans-serif"
               style={{ pointerEvents: 'none', userSelect: 'none' }}>
-              {ans.length > 17 ? ans.slice(0, 15) + '…' : ans}
+              {displayAns}
             </text>
 
             {/* Connection label */}
             {connected && targetNode && (
-              <text x={Q_W - 10} y={cardMidY - 1} textAnchor="end" fontSize={9} fill={amber} fontWeight={600}
+              <text x={qW - 10} y={cardMidY - 1} textAnchor="end" fontSize={9} fill={amber} fontWeight={600}
                 style={{ pointerEvents: 'none', userSelect: 'none' }}>
                 → connected
               </text>
@@ -313,14 +335,14 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown }: {
 
             {/* Port nub — bottom center */}
             <circle
-              cx={Q_W / 2} cy={portCY} r={7}
+              cx={qW / 2} cy={portCY} r={7}
               fill={connected ? amber : (isDark ? '#0f172a' : '#fff')}
               stroke={amber} strokeWidth={1.5}
               style={{ cursor: 'crosshair', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.18))' }}
               onMouseDown={e => onAnswerPortDown(e, node.id, ans, portCY)}
             />
             <path
-              d={`M ${Q_W / 2 - 3} ${portCY - 2} L ${Q_W / 2} ${portCY + 2} L ${Q_W / 2 + 3} ${portCY - 2}`}
+              d={`M ${qW / 2 - 3} ${portCY - 2} L ${qW / 2} ${portCY + 2} L ${qW / 2 + 3} ${portCY - 2}`}
               fill="none" stroke={connected ? '#fff' : amber} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
               style={{ pointerEvents: 'none' }}
             />
@@ -345,22 +367,23 @@ function EdgeLine({ edge, nodes, variant, t, isDark }: {
 
   if (variant === 'question') {
     const answers: string[] = (from.metadata?.answers as string[] | undefined) ?? [];
+    const fqW = questionNodeW(from);
     const idx = answers.indexOf(edge.label ?? '');
     if (idx >= 0) {
-      // Port exits from the bottom nub of each answer row
-      x1 = (from.x ?? 0) + Q_W / 2;
+      x1 = (from.x ?? 0) + fqW / 2;
       y1 = (from.y ?? 0) + Q_BASE_H + idx * Q_ANS_H + Q_ANS_H - 7;
       exitDir = 'bottom';
     } else {
-      x1 = (from.x ?? 0) + Q_W / 2;
+      x1 = (from.x ?? 0) + fqW / 2;
       y1 = (from.y ?? 0) + questionNodeH(answers);
     }
   } else {
-    x1 = (from.x ?? 0) + NODE_W / 2;
+    const fnW = nodeWidth(from.label);
+    x1 = (from.x ?? 0) + fnW / 2;
     y1 = (from.y ?? 0) + NODE_H;
   }
 
-  const toW = variant === 'question' ? Q_W : NODE_W;
+  const toW = variant === 'question' ? questionNodeW(to) : nodeWidth(to.label);
   const x2 = (to.x ?? 0) + toW / 2;
   const y2 = to.y ?? 0;
   const d = bezierPath(x1, y1, x2, y2, exitDir);
@@ -727,7 +750,7 @@ export function DiagramEditor({
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const n of model.nodes) {
       const nx = n.x ?? 0, ny = n.y ?? 0;
-      const nw = variant === 'question' ? Q_W : NODE_W;
+      const nw = variant === 'question' ? questionNodeW(n) : nodeWidth(n.label);
       const nh = variant === 'question' ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
       minX = Math.min(minX, nx); minY = Math.min(minY, ny);
       maxX = Math.max(maxX, nx + nw); maxY = Math.max(maxY, ny + nh);
@@ -744,7 +767,7 @@ export function DiagramEditor({
     const node = model.nodes.find(n => n.id === nodeId);
     if (!node || !svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
-    const nw = variant === 'question' ? Q_W : NODE_W;
+    const nw = variant === 'question' ? questionNodeW(node) : nodeWidth(node.label);
     const nh = variant === 'question' ? questionNodeH((node.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
     const cx = (node.x ?? 0) + nw / 2;
     const cy = (node.y ?? 0) + nh / 2;
@@ -808,14 +831,15 @@ export function DiagramEditor({
     e.stopPropagation();
     const node = model.nodes.find(n => n.id === nodeId)!;
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    setLiveEdge({ fromId: nodeId, fromX: (node.x ?? 0) + NODE_W / 2, fromY: (node.y ?? 0) + NODE_H, exitDir: 'bottom', toX: x, toY: y });
+    const nW = nodeWidth(node.label);
+    setLiveEdge({ fromId: nodeId, fromX: (node.x ?? 0) + nW / 2, fromY: (node.y ?? 0) + NODE_H, exitDir: 'bottom', toX: x, toY: y });
   };
 
   const onAnswerPortDown = (e: React.MouseEvent, nodeId: string, answer: string, portYInNode: number) => {
     e.stopPropagation();
     const node = model.nodes.find(n => n.id === nodeId)!;
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    setLiveEdge({ fromId: nodeId, fromX: (node.x ?? 0) + Q_W / 2, fromY: (node.y ?? 0) + portYInNode, exitDir: 'bottom', answerLabel: answer, toX: x, toY: y });
+    setLiveEdge({ fromId: nodeId, fromX: (node.x ?? 0) + questionNodeW(node) / 2, fromY: (node.y ?? 0) + portYInNode, exitDir: 'bottom', answerLabel: answer, toX: x, toY: y });
   };
 
   const onNodeMouseDown = (e: React.MouseEvent, id: string) => {
@@ -1030,8 +1054,8 @@ export function DiagramEditor({
               {model.nodes.map((node, idx) => {
                 const isHovered = hoveredId === node.id;
                 const isQuestion = variant === 'question';
-                const nodeW = isQuestion ? Q_W : NODE_W;
-                const nodeH = isQuestion ? questionNodeH((node.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
+                const nW = isQuestion ? questionNodeW(node) : nodeWidth(node.label);
+                const nH = isQuestion ? questionNodeH((node.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
 
                 return (
                   <g
@@ -1046,12 +1070,12 @@ export function DiagramEditor({
                     onMouseLeave={() => setHoveredId(null)}
                   >
                     {isQuestion ? (
-                      <QuestionNode node={node} selected={selected === node.id} edges={model.edges} isDark={isDark} onAnswerPortDown={onAnswerPortDown} />
+                      <QuestionNode node={node} selected={selected === node.id} edges={model.edges} isDark={isDark} onAnswerPortDown={onAnswerPortDown} qW={nW} />
                     ) : (
                       <>
-                        <NodeShape node={node} selected={selected === node.id} variant={variant} stepNumber={variant === 'journey' ? idx + 1 : undefined} t={t} isDark={isDark} />
+                        <NodeShape node={node} selected={selected === node.id} variant={variant} stepNumber={variant === 'journey' ? idx + 1 : undefined} t={t} isDark={isDark} w={nW} />
                         {editingId === node.id ? (
-                          <foreignObject x={6} y={6} width={NODE_W - 12} height={NODE_H - 12}>
+                          <foreignObject x={6} y={6} width={nW - 12} height={NODE_H - 12}>
                             <input
                               // @ts-ignore
                               xmlns="http://www.w3.org/1999/xhtml" autoFocus
@@ -1063,12 +1087,12 @@ export function DiagramEditor({
                             />
                           </foreignObject>
                         ) : (
-                          <text x={NODE_W / 2} y={NODE_H / 2 + 5} textAnchor="middle" fontSize={13} fontWeight="500" fontFamily="ui-sans-serif,system-ui,sans-serif" fill={selected === node.id ? acc.color : t.textPrimary} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                          <text x={nW / 2} y={NODE_H / 2 + 5} textAnchor="middle" fontSize={13} fontWeight="500" fontFamily="ui-sans-serif,system-ui,sans-serif" fill={selected === node.id ? acc.color : t.textPrimary} style={{ pointerEvents: 'none', userSelect: 'none' }}>
                             {node.label}
                           </text>
                         )}
                         <circle
-                          cx={NODE_W / 2} cy={NODE_H + 1} r={6}
+                          cx={nW / 2} cy={NODE_H + 1} r={6}
                           fill={acc.color} stroke={isDark ? '#0f172a' : 'white'} strokeWidth={2}
                           style={{ cursor: 'crosshair', opacity: isHovered ? 1 : 0, transition: 'opacity 0.15s', pointerEvents: isHovered ? 'all' : 'none', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.25))' }}
                           onMouseDown={e => onPortMouseDown(e, node.id)}
@@ -1077,7 +1101,7 @@ export function DiagramEditor({
                     )}
 
                     {liveEdge && liveEdge.fromId !== node.id && (
-                      <circle cx={nodeW / 2} cy={-1} r={6} fill={acc.color} stroke={isDark ? '#0f172a' : 'white'} strokeWidth={2} style={{ opacity: 0.85, pointerEvents: 'none' }} />
+                      <circle cx={nW / 2} cy={-1} r={6} fill={acc.color} stroke={isDark ? '#0f172a' : 'white'} strokeWidth={2} style={{ opacity: 0.85, pointerEvents: 'none' }} />
                     )}
                   </g>
                 );
