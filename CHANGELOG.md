@@ -6,6 +6,11 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-05-16
+
+First stable release. The package is now published on npm and considered
+production-ready for the documented surface area.
+
 ### Added
 - `LICENSE` (MIT).
 - `CHANGELOG.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`.
@@ -13,6 +18,32 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - CI workflow that runs `bun test`, typecheck, and build on every push and PR.
 - `repository`, `bugs`, `homepage` metadata in `package.json`.
 - `sideEffects: false` for better tree-shaking.
+- `Model.validate()` returns structural problems (dangling edge refs, duplicate IDs)
+  without throwing — used by tooling and surfaced in the editor UI.
+- `Model.setVariant()` and persistent `variant` field on `DiagramModel` so the UI
+  variant (flowchart / question / journey) survives JSON round-trips.
+- Mermaid importer now strips `%% comments`, `mermaid.initialize(...)` blocks,
+  `classDef` / `class` / `style` / `linkStyle` / `click` directives, and parses
+  `subgraph` blocks by tagging contained nodes with `metadata.group`.
+- Redesigned SVG canvas: smooth cubic-bezier edges, dot grid, drop shadows,
+  glowing selection ring, indigo/slate palette. `StepEditor` matches with
+  indigo accent and softer card styling.
+
+### Changed
+- `Model.addEdge()` now throws on edges that reference unknown source/target
+  node IDs (previously accepted silently). Use `Model.validate()` to inspect
+  imported data without throwing.
+- SVG / PNG exporter rewritten to mirror the canvas visuals — question nodes,
+  dynamic widths, bezier edges, dot grid, and drop shadows. Previously exports
+  used a primitive BFS grid layout with straight lines and no question-node
+  support.
+
+### Fixed
+- Mermaid exporter now emits `-.->` for dashed/dotted edges (previously
+  collapsed all styles to `-->`). PlantUML exporter emits `-[dashed]->` and
+  `-[dotted]->` for non-solid styles.
+- Mermaid importer edge regex anchors correctly so node IDs containing `{[(`
+  characters no longer bleed into the connector.
 
 ## [0.1.0] - 2026-05
 
@@ -25,5 +56,6 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - Diagram variants: `flowchart`, `question`, `journey`.
 - GitHub Pages live demo with developer docs.
 
-[Unreleased]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/ag-gr-hub/flowchart-sequence-designer/releases/tag/v0.1.0

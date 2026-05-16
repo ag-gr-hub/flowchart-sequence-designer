@@ -23,56 +23,96 @@ function parseNodeDecl(raw: string): { id: string; label: string; shape: NodeSha
   return null;
 }
 
+// Mermaid flowchart edge connector: solid (-->, ---), dashed (-.->, -.-), or with labels.
+// Anchored so node IDs ending in `{`/`[`/`(` cannot bleed into the connector.
+const EDGE_RE = /^(.+?)\s*(-\.->|-\.-|-->|---)(?:\|(.+?)\|)?\s*(.+)$/;
+
+function detectStyle(connector: string): 'solid' | 'dashed' {
+  return connector.startsWith('-.') ? 'dashed' : 'solid';
+}
+
+function detectArrowhead(connector: string): 'arrow' | 'none' {
+  return connector.endsWith('>') ? 'arrow' : 'none';
+}
+
 function parseFlowchart(lines: string[]): Model {
   const model = new Model('flowchart');
   const nodeMap = new Map<string, boolean>();
+  const groupStack: string[] = [];
 
-  const ensureNode = (id: string) => {
+  const ensureNode = (id: string, group?: string) => {
     if (!nodeMap.has(id)) {
       nodeMap.set(id, true);
-      model.addNode({ id, label: id, shape: 'rectangle' });
+      const metadata = group ? { group } : undefined;
+      model.addNode({ id, label: id, shape: 'rectangle', ...(metadata ? { metadata } : {}) });
     }
   };
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('graph') || trimmed.startsWith('flowchart') || trimmed.startsWith('%%')) continue;
+    if (!trimmed) continue;
+    // Skip Mermaid comments, config blocks, header directives, and click handlers.
+    if (
+      trimmed.startsWith('%%') ||
+      trimmed.startsWith('graph') ||
+      trimmed.startsWith('flowchart') ||
+      trimmed.startsWith('click ') ||
+      trimmed.startsWith('classDef ') ||
+      trimmed.startsWith('class ') ||
+      trimmed.startsWith('style ') ||
+      trimmed.startsWith('linkStyle ')
+    ) continue;
 
-    // Edge pattern: A -->|label| B or A --> B
-    const edgeMatch = trimmed.match(/^(.+?)\s*(-->|---)(\|(.+?)\|)?\s*(.+)$/);
+    // Subgraphs: track current group so contained nodes get metadata.group set.
+    const subgraphOpen = trimmed.match(/^subgraph\s+(\S+)/i);
+    if (subgraphOpen) { groupStack.push(subgraphOpen[1]); continue; }
+    if (/^end\b/i.test(trimmed)) { groupStack.pop(); continue; }
+
+    const currentGroup = groupStack[groupStack.length - 1];
+
+    const edgeMatch = trimmed.match(EDGE_RE);
     if (edgeMatch) {
       const fromRaw = edgeMatch[1].trim();
-      const toRaw = edgeMatch[5].trim();
-      const label = edgeMatch[4]?.replace(/^["']|["']$/g, '');
-      const style = edgeMatch[2] === '---' ? 'solid' : 'solid';
+      const connector = edgeMatch[2];
+      const label = edgeMatch[3]?.replace(/^["']|["']$/g, '');
+      const toRaw = edgeMatch[4].trim();
+      const style = detectStyle(connector);
+      const arrowhead = detectArrowhead(connector);
 
       const fromNode = parseNodeDecl(fromRaw);
       const toNode = parseNodeDecl(toRaw);
 
       if (fromNode && !nodeMap.has(fromNode.id)) {
         nodeMap.set(fromNode.id, true);
-        model.addNode(fromNode);
-      } else {
-        ensureNode(fromRaw.replace(/\W.*/, ''));
+        const metadata = currentGroup ? { group: currentGroup } : undefined;
+        model.addNode({ ...fromNode, ...(metadata ? { metadata } : {}) });
+      } else if (!fromNode) {
+        ensureNode(fromRaw.replace(/\W.*/, ''), currentGroup);
       }
       if (toNode && !nodeMap.has(toNode.id)) {
         nodeMap.set(toNode.id, true);
-        model.addNode(toNode);
-      } else {
-        ensureNode(toRaw.replace(/\W.*/, ''));
+        const metadata = currentGroup ? { group: currentGroup } : undefined;
+        model.addNode({ ...toNode, ...(metadata ? { metadata } : {}) });
+      } else if (!toNode) {
+        ensureNode(toRaw.replace(/\W.*/, ''), currentGroup);
       }
 
       const fromId = fromNode?.id ?? fromRaw.replace(/\W.*/, '');
       const toId = toNode?.id ?? toRaw.replace(/\W.*/, '');
-      model.addEdge({ id: eid(), from: fromId, to: toId, ...(label ? { label } : {}), style });
+      model.addEdge({
+        id: eid(), from: fromId, to: toId,
+        ...(label ? { label } : {}),
+        style,
+        ...(arrowhead === 'none' ? { arrowhead } : {}),
+      });
       continue;
     }
 
-    // Standalone node declaration
     const nodeDecl = parseNodeDecl(trimmed);
     if (nodeDecl && !nodeMap.has(nodeDecl.id)) {
       nodeMap.set(nodeDecl.id, true);
-      model.addNode(nodeDecl);
+      const metadata = currentGroup ? { group: currentGroup } : undefined;
+      model.addNode({ ...nodeDecl, ...(metadata ? { metadata } : {}) });
     }
   }
 
@@ -98,8 +138,8 @@ function parseSequence(lines: string[], title?: string): Model {
       continue;
     }
 
-    // A->>B: label or A-->B: label
-    const msgMatch = trimmed.match(/^(.+?)\s*(->>|-->|->)\s*(.+?):\s*(.+)$/);
+    // Sequence message arrows: ->, ->>, -->, -->>  (-- prefix = dashed)
+    const msgMatch = trimmed.match(/^(.+?)\s*(-->>|->>|-->|->)\s*(.+?):\s*(.+)$/);
     if (msgMatch) {
       const from = msgMatch[1].trim();
       const arrow = msgMatch[2];
@@ -107,7 +147,7 @@ function parseSequence(lines: string[], title?: string): Model {
       const label = msgMatch[4].trim();
       model.addActor(from);
       model.addActor(to);
-      model.addMessage({ id: mid(), from, to, label, style: arrow.includes('-') && arrow.includes('>') && arrow.startsWith('-') && !arrow.startsWith('->') ? 'dashed' : 'solid' });
+      model.addMessage({ id: mid(), from, to, label, style: arrow.startsWith('--') ? 'dashed' : 'solid' });
     }
   }
 
@@ -115,7 +155,10 @@ function parseSequence(lines: string[], title?: string): Model {
 }
 
 export function fromMermaid(mermaid: string): Model {
-  const rawLines = mermaid.split('\n');
+  // Strip mermaid.initialize(...) and similar JS-style config blocks that
+  // sometimes appear in copy-pasted snippets — anything between `init` and `)`.
+  const cleaned = mermaid.replace(/mermaid\.initialize\([\s\S]*?\)\s*;?/g, '');
+  const rawLines = cleaned.split('\n');
 
   // Strip frontmatter
   let startIdx = 0;

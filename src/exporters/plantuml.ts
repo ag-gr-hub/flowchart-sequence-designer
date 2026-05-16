@@ -21,7 +21,9 @@ function exportFlowchart(model: DiagramModel): string {
   lines.push('');
 
   for (const edge of model.edges) {
-    const arrow = edge.style === 'dashed' ? '-->' : '-->';
+    const arrow = edge.style === 'dashed' ? '-[dashed]->'
+      : edge.style === 'dotted' ? '-[dotted]->'
+      : '-->';
     const label = edge.label ? ` : ${edge.label}` : '';
     lines.push(`${edge.from} ${arrow} ${edge.to}${label}`);
   }

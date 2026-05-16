@@ -700,7 +700,9 @@ export function DiagramEditor({
   initialModel, onChange, onExport, height = 600,
   allowedExports, allowImport = true, variant = 'flowchart', theme = 'auto',
 }: DiagramEditorProps) {
-  const base: DiagramModel = initialModel ?? { type: 'flowchart', nodes: [], edges: [] };
+  const base: DiagramModel = initialModel
+    ? { ...initialModel, variant: initialModel.variant ?? variant }
+    : { type: 'flowchart', variant, nodes: [], edges: [] };
   const [model, setModel] = useState<DiagramModel>(base);
   // History for undo/redo
   const historyRef = useRef<DiagramModel[]>([base]);
