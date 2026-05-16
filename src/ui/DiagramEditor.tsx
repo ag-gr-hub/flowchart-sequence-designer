@@ -3,6 +3,22 @@ import { Toolbar } from './Toolbar.js';
 import { StepEditor } from './StepEditor.js';
 import { SequenceEditor } from './SequenceEditor.js';
 import { Minimap } from './Minimap.js';
+import { useHistory } from './hooks/useHistory.js';
+import { useIsDark, usePrefersReducedMotion } from './hooks/useSystemTheme.js';
+import {
+  NODE_H,
+  Q_BASE_H,
+  Q_ANS_ROW_H,
+  GRID,
+  Q_CARD_PAD,
+  estimateTextW,
+  nodeWidth,
+  answerCardW,
+  questionNodeW,
+  questionNodeH,
+  snap,
+  bezierPath,
+} from './layout.js';
 import type { DiagramModel, DiagramNode, DiagramEdge, ExportFormat, DiagramVariant } from '../core/types.js';
 import { toMermaid } from '../exporters/mermaid.js';
 import { toPlantUML } from '../exporters/plantuml.js';
@@ -11,112 +27,9 @@ import { toSVG, toPNG } from '../exporters/svg.js';
 import { fromMermaid } from '../importers/mermaid.js';
 import { fromJSON } from '../importers/json.js';
 
-// Fixed heights; widths are dynamic per-node
-const NODE_H = 48;
-const Q_BASE_H = 68;
-const Q_ANS_ROW_H = 80; // height of the entire answer section (all cards in one row)
-const GRID = 24;
-const Q_CARD_PAD = 8;   // gap between answer cards and side padding
-
-// Width bounds
-const MIN_NODE_W = 120;
-const MAX_NODE_W = 320;
-const MIN_Q_W = 220;
-const MAX_Q_W = 400;
-
-/** Estimate text width at ~7.5px/char (13px ui-sans-serif mixed-case). */
-function estimateTextW(text: string, pxPerChar = 7.5): number {
-  return text.length * pxPerChar;
-}
-
-/** Dynamic width for standard nodes based on label length. */
-function nodeWidth(label: string): number {
-  return Math.min(MAX_NODE_W, Math.max(MIN_NODE_W, Math.ceil(estimateTextW(label) + 48)));
-}
-
-/** Width of a single answer card based on its text content. */
-function answerCardW(ans: string): number {
-  // centered badge (22px) + centered text + horizontal padding
-  return Math.max(86, Math.ceil(Math.max(estimateTextW(ans, 7.5) + 20, 56) + 32));
-}
-
-/** Dynamic width for question nodes — header vs. sum of side-by-side answer cards. */
-function questionNodeW(node: DiagramNode): number {
-  const answers = (node.metadata?.answers as string[] | undefined) ?? [];
-  const headerW = estimateTextW(node.label, 8) + 80;
-  if (answers.length === 0) return Math.max(MIN_Q_W, Math.ceil(headerW));
-  // cards sit side-by-side: total = sum(cardW) + gaps + side padding
-  const cardsW = answers.reduce((s, a) => s + answerCardW(a), 0)
-    + (answers.length - 1) * Q_CARD_PAD + 2 * Q_CARD_PAD;
-  return Math.max(MIN_Q_W, Math.ceil(Math.max(headerW, cardsW)));
-}
-
 // ── Theme ──────────────────────────────────────────────────────────────────
-export interface ThemeColors {
-  canvas: string; dot: string;
-  nodeFill: string; nodeStroke: string; nodeSelectedFill: string;
-  edgeColor: string;
-  textPrimary: string; textSecondary: string; textMuted: string;
-  panelBg: string; panelBorder: string;
-  ctrlsBg: string; ctrlsBorder: string;
-  inputBg: string; inputBorder: string; inputText: string;
-  cardBg: string; cardBorder: string;
-  sectionBorder: string;
-  labelText: string;
-  hintText: string;
-  statusBg: string;
-  btnSecBg: string; btnSecText: string;
-  shapeBtnBg: string; shapeBtnBorder: string;
-  addFormBg: string;
-  bannerBg: string;
-}
-
-const lightTheme: ThemeColors = {
-  canvas: '#fafbfc', dot: '#dbe3ee',
-  nodeFill: '#ffffff', nodeStroke: '#cbd5e1', nodeSelectedFill: '#eef2ff',
-  edgeColor: '#94a3b8',
-  textPrimary: '#1e293b', textSecondary: '#475569', textMuted: '#94a3b8',
-  panelBg: '#ffffff', panelBorder: '#e2e8f0',
-  ctrlsBg: '#ffffff', ctrlsBorder: '#cbd5e1',
-  inputBg: '#f8fafc', inputBorder: '#e2e8f0', inputText: '#1e293b',
-  cardBg: '#f8fafc', cardBorder: '#e2e8f0',
-  sectionBorder: '#f1f5f9',
-  labelText: '#94a3b8',
-  hintText: '#94a3b8',
-  statusBg: '#ffffff',
-  btnSecBg: '#e2e8f0', btnSecText: '#475569',
-  shapeBtnBg: '#f1f5f9', shapeBtnBorder: '#e2e8f0',
-  addFormBg: '#f5f3ff',
-  bannerBg: '#f8fafc',
-};
-
-const darkTheme: ThemeColors = {
-  canvas: '#0f172a', dot: '#1e293b',
-  nodeFill: '#1e293b', nodeStroke: '#334155', nodeSelectedFill: '#1e1b4b',
-  edgeColor: '#475569',
-  textPrimary: '#f1f5f9', textSecondary: '#94a3b8', textMuted: '#475569',
-  panelBg: '#1e293b', panelBorder: '#334155',
-  ctrlsBg: '#0f172a', ctrlsBorder: '#1e293b',
-  inputBg: '#0f172a', inputBorder: '#334155', inputText: '#e2e8f0',
-  cardBg: '#0f172a', cardBorder: '#334155',
-  sectionBorder: '#0f172a',
-  labelText: '#475569',
-  hintText: '#475569',
-  statusBg: '#0f172a',
-  btnSecBg: '#334155', btnSecText: '#94a3b8',
-  shapeBtnBg: '#0f172a', shapeBtnBorder: '#334155',
-  addFormBg: '#1e1b4b',
-  bannerBg: '#1e293b',
-};
-
-// ── Accent palettes ────────────────────────────────────────────────────────
-const C = {
-  indigo: '#4f46e5', indigoGlow: 'rgba(79,70,229,0.22)',
-  amber: '#d97706', amberLight: '#fef3c7', amberBorder: '#fcd34d', amberGlow: 'rgba(217,119,6,0.25)',
-  amberDark: '#fbbf24', amberDarkLight: 'rgba(251,191,36,0.12)', amberDarkBorder: 'rgba(251,191,36,0.3)',
-  emerald: '#059669', emeraldLight: '#ecfdf5', emeraldGlow: 'rgba(5,150,105,0.2)',
-  emeraldDark: '#10b981', emeraldDarkLight: 'rgba(16,185,129,0.12)', emeraldDarkBorder: 'rgba(16,185,129,0.3)',
-};
+import { ACCENT as C, type ThemeColors, lightTheme, darkTheme, variantAccent } from './theme.js';
+export type { ThemeColors } from './theme.js';
 
 interface Transform { x: number; y: number; scale: number }
 interface DragState { nodeId: string; ox: number; oy: number }
@@ -140,50 +53,6 @@ export interface DiagramEditorProps {
    * application's brand without forking the component.
    */
   themeOverrides?: Partial<ThemeColors>;
-}
-
-function snap(v: number) { return Math.round(v / GRID) * GRID; }
-
-function questionNodeH(answers: string[]): number {
-  return Q_BASE_H + (answers.length === 0 ? 48 : Q_ANS_ROW_H);
-}
-
-function bezierPath(x1: number, y1: number, x2: number, y2: number, exitDir: 'bottom' | 'right' | 'left' = 'bottom'): string {
-  if (exitDir === 'right') {
-    const dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1);
-    const c = Math.max(60, (dx + dy) * 0.45);
-    return `M ${x1} ${y1} C ${x1 + c} ${y1}, ${x2} ${y2 - c * 0.5}, ${x2} ${y2}`;
-  }
-  if (exitDir === 'left') {
-    const dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1);
-    const c = Math.max(60, (dx + dy) * 0.45);
-    return `M ${x1} ${y1} C ${x1 - c} ${y1}, ${x2} ${y2 - c * 0.5}, ${x2} ${y2}`;
-  }
-  // Default: down-from-source-bottom, up-into-target-top.
-  // Pull strength scales with vertical distance; when the target is at/above
-  // the source, add lateral compensation so the curve doesn't kink.
-  const dy = y2 - y1;
-  const dyAbs = Math.abs(dy);
-  const dxAbs = Math.abs(x2 - x1);
-  const base = dy > 0 ? dyAbs * 0.55 : Math.max(90, dyAbs * 0.5 + dxAbs * 0.28);
-  const curve = Math.max(36, Math.min(220, base));
-  return `M ${x1} ${y1} C ${x1} ${y1 + curve}, ${x2} ${y2 - curve}, ${x2} ${y2}`;
-}
-
-function variantAccent(variant: DiagramVariant, isDark: boolean) {
-  if (variant === 'question') {
-    return isDark
-      ? { color: C.amberDark, fill: C.amberDarkLight, border: C.amberDarkBorder, glow: C.amberGlow }
-      : { color: C.amber, fill: C.amberLight, border: C.amberBorder, glow: C.amberGlow };
-  }
-  if (variant === 'journey') {
-    return isDark
-      ? { color: C.emeraldDark, fill: C.emeraldDarkLight, border: C.emeraldDarkBorder, glow: C.emeraldGlow }
-      : { color: C.emerald, fill: C.emeraldLight, border: '#6ee7b7', glow: C.emeraldGlow };
-  }
-  return isDark
-    ? { color: '#818cf8', fill: 'rgba(79,70,229,0.12)', border: 'rgba(79,70,229,0.3)', glow: C.indigoGlow }
-    : { color: C.indigo, fill: '#f5f3ff', border: '#c7d2fe', glow: C.indigoGlow };
 }
 
 // ── Standard node shape ────────────────────────────────────────────────────
@@ -791,10 +660,9 @@ function FlowchartEditor({
   const base: DiagramModel = initialModel
     ? { ...initialModel, variant: initialModel.variant ?? variant }
     : { type: 'flowchart', variant, nodes: [], edges: [] };
-  const [model, setModel] = useState<DiagramModel>(base);
-  // History for undo/redo
-  const historyRef = useRef<DiagramModel[]>([base]);
-  const historyIdxRef = useRef(0);
+  const notify = useCallback((m: DiagramModel) => onChange?.(m), [onChange]);
+  const history = useHistory<DiagramModel>(base, notify);
+  const { state: model, apply: applyModel, applyAndPush, undo, redo } = history;
   const [transform, setTransform] = useState<Transform>({ x: 60, y: 60, scale: 1 });
   const [selected, setSelected] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -807,24 +675,13 @@ function FlowchartEditor({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [navOpen, setNavOpen] = useState(true);
-  const [sysDark, setSysDark] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false
-  );
   const [viewport, setViewport] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [announcement, setAnnouncement] = useState('');
-  const [reducedMotion, setReducedMotion] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false
-  );
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+  const reducedMotion = usePrefersReducedMotion();
+  const isDark = useIsDark(theme);
 
   // Track the SVG element size for the minimap viewport overlay.
   useEffect(() => {
@@ -840,53 +697,11 @@ function FlowchartEditor({
     return () => ro.disconnect();
   }, []);
 
-  // Listen for system theme changes
-  useEffect(() => {
-    if (theme !== 'auto') return;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = (e: MediaQueryListEvent) => setSysDark(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, [theme]);
-
-  const isDark = theme === 'dark' || (theme === 'auto' && sysDark);
   const t = useMemo<ThemeColors>(
     () => ({ ...(isDark ? darkTheme : lightTheme), ...(themeOverrides ?? {}) }),
     [isDark, themeOverrides],
   );
 
-  const notify = useCallback((m: DiagramModel) => onChange?.(m), [onChange]);
-
-  // Push a new state onto the undo stack
-  const pushHistory = useCallback((m: DiagramModel) => {
-    const stack = historyRef.current.slice(0, historyIdxRef.current + 1);
-    stack.push(m);
-    if (stack.length > 80) stack.shift();
-    historyRef.current = stack;
-    historyIdxRef.current = stack.length - 1;
-  }, []);
-
-  const applyModel = useCallback((m: DiagramModel) => {
-    setModel(m); notify(m);
-  }, [notify]);
-
-  const applyAndPush = useCallback((m: DiagramModel) => {
-    pushHistory(m); applyModel(m);
-  }, [pushHistory, applyModel]);
-
-  const undo = useCallback(() => {
-    if (historyIdxRef.current <= 0) return;
-    historyIdxRef.current--;
-    const m = historyRef.current[historyIdxRef.current];
-    setModel(m); notify(m);
-  }, [notify]);
-
-  const redo = useCallback(() => {
-    if (historyIdxRef.current >= historyRef.current.length - 1) return;
-    historyIdxRef.current++;
-    const m = historyRef.current[historyIdxRef.current];
-    setModel(m); notify(m);
-  }, [notify]);
 
   const reCenter = useCallback(() => {
     if (!svgRef.current) return;
@@ -1148,7 +963,7 @@ function FlowchartEditor({
       const x = snap((e.clientX - drag.ox - transform.x) / transform.scale);
       const y = snap((e.clientY - drag.oy - transform.y) / transform.scale);
       const updated = { ...model, nodes: model.nodes.map(n => n.id === drag.nodeId ? { ...n, x, y } : n) };
-      setModel(updated); notify(updated);
+      applyModel(updated);
     } else if (pan) {
       setTransform(tr => ({ ...tr, x: pan.tx + (e.clientX - pan.ox), y: pan.ty + (e.clientY - pan.oy) }));
     }
@@ -1465,8 +1280,8 @@ function FlowchartEditor({
               x={ctxMenu.x} y={ctxMenu.y}
               nodeId={ctxMenu.nodeId} edgeId={ctxMenu.edgeId}
               isDark={isDark} t={t} acc={acc}
-              canUndo={historyIdxRef.current > 0}
-              canRedo={historyIdxRef.current < historyRef.current.length - 1}
+              canUndo={history.canUndo}
+              canRedo={history.canRedo}
               onUndo={() => { undo(); setCtxMenu(null); }}
               onRedo={() => { redo(); setCtxMenu(null); }}
               onReCenter={() => { reCenter(); setCtxMenu(null); }}
