@@ -87,7 +87,7 @@ interface Transform { x: number; y: number; scale: number }
 interface DragState { nodeId: string; ox: number; oy: number }
 interface LiveEdge {
   fromId: string; fromX: number; fromY: number;
-  exitDir: 'bottom' | 'right'; answerLabel?: string; toX: number; toY: number;
+  exitDir: 'bottom' | 'right' | 'left'; answerLabel?: string; toX: number; toY: number;
 }
 
 export interface DiagramEditorProps {
@@ -107,11 +107,16 @@ function questionNodeH(answers: string[]): number {
   return Q_BASE_H + Math.max(1, answers.length) * Q_ANS_H;
 }
 
-function bezierPath(x1: number, y1: number, x2: number, y2: number, exitDir: 'bottom' | 'right' = 'bottom'): string {
+function bezierPath(x1: number, y1: number, x2: number, y2: number, exitDir: 'bottom' | 'right' | 'left' = 'bottom'): string {
   if (exitDir === 'right') {
     const dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1);
     const c = Math.max(60, (dx + dy) * 0.45);
     return `M ${x1} ${y1} C ${x1 + c} ${y1}, ${x2} ${y2 - c * 0.5}, ${x2} ${y2}`;
+  }
+  if (exitDir === 'left') {
+    const dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1);
+    const c = Math.max(60, (dx + dy) * 0.45);
+    return `M ${x1} ${y1} C ${x1 - c} ${y1}, ${x2} ${y2 - c * 0.5}, ${x2} ${y2}`;
   }
   const dy = Math.abs(y2 - y1), dx = Math.abs(x2 - x1);
   const curve = Math.max(50, (dy + dx) * 0.4);
@@ -225,28 +230,34 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown }: {
         const rowY = Q_BASE_H + i * Q_ANS_H;
         const midY = rowY + Q_ANS_H / 2;
         const connected = edges.some(e => e.from === node.id && e.label === ans);
+        // Port sits on the LEFT side; pill shifts right to make room
+        const portX = 14;
+        const pillX = 30;
+        const pillW = Q_W - pillX - 10;
         return (
           <g key={ans + i}>
-            <rect x={10} y={rowY + 5} width={Q_W - 46} height={Q_ANS_H - 10} rx={999}
-              fill={connected ? amberColor : pillFill} stroke={amberBorder} strokeWidth={1} />
-            <text
-              x={Q_W / 2 - 14} y={midY + 4}
-              textAnchor="middle" fontSize={11} fontWeight="500"
-              fill={connected ? '#fff' : (isDark ? '#94a3b8' : '#475569')}
-              style={{ pointerEvents: 'none', userSelect: 'none' }}
-            >
-              {ans.length > 18 ? ans.slice(0, 16) + '…' : ans}
-            </text>
+            {/* Port dot — left side */}
             <circle
-              cx={Q_W - 14} cy={midY} r={7}
+              cx={portX} cy={midY} r={7}
               fill={connected ? amberColor : pillFill}
               stroke={amberColor} strokeWidth={1.5}
               style={{ cursor: 'crosshair', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' }}
               onMouseDown={e => onAnswerPortDown(e, node.id, ans, midY)}
             />
-            <text x={Q_W - 14} y={midY + 4} textAnchor="middle" fontSize={9}
+            <text x={portX} y={midY + 4} textAnchor="middle" fontSize={9}
               fill={connected ? '#fff' : amberColor}
-              style={{ pointerEvents: 'none', userSelect: 'none' }}>→</text>
+              style={{ pointerEvents: 'none', userSelect: 'none' }}>←</text>
+            {/* Answer pill */}
+            <rect x={pillX} y={rowY + 5} width={pillW} height={Q_ANS_H - 10} rx={999}
+              fill={connected ? amberColor : pillFill} stroke={amberBorder} strokeWidth={1} />
+            <text
+              x={pillX + pillW / 2} y={midY + 4}
+              textAnchor="middle" fontSize={11} fontWeight="500"
+              fill={connected ? '#fff' : (isDark ? '#94a3b8' : '#475569')}
+              style={{ pointerEvents: 'none', userSelect: 'none' }}
+            >
+              {ans.length > 16 ? ans.slice(0, 14) + '…' : ans}
+            </text>
           </g>
         );
       })}
@@ -263,16 +274,17 @@ function EdgeLine({ edge, nodes, variant, t, isDark }: {
   const to = nodes.find(n => n.id === edge.to);
   if (!from || !to) return null;
 
-  let x1: number, y1: number, exitDir: 'bottom' | 'right' = 'bottom';
+  let x1: number, y1: number, exitDir: 'bottom' | 'right' | 'left' = 'bottom';
   const amberColor = isDark ? C.amberDark : C.amber;
 
   if (variant === 'question') {
     const answers: string[] = (from.metadata?.answers as string[] | undefined) ?? [];
     const idx = answers.indexOf(edge.label ?? '');
     if (idx >= 0) {
-      x1 = (from.x ?? 0) + Q_W;
+      // Port is on the LEFT side
+      x1 = from.x ?? 0;
       y1 = (from.y ?? 0) + Q_BASE_H + idx * Q_ANS_H + Q_ANS_H / 2;
-      exitDir = 'right';
+      exitDir = 'left';
     } else {
       x1 = (from.x ?? 0) + Q_W / 2;
       y1 = (from.y ?? 0) + questionNodeH(answers);
@@ -290,16 +302,21 @@ function EdgeLine({ edge, nodes, variant, t, isDark }: {
   const dash = edge.style === 'dashed' ? '7,4' : edge.style === 'dotted' ? '2,4' : undefined;
   const edgeClr = variant === 'question' ? amberColor : t.edgeColor;
 
+  const isAmber = variant === 'question';
   return (
     <g>
-      <path d={d} fill="none" stroke="transparent" strokeWidth={12} />
-      <path d={d} fill="none" stroke={edgeClr}
-        strokeWidth={variant === 'question' ? 2 : 1.5} strokeDasharray={dash}
+      {/* Wider transparent hit area */}
+      <path d={d} fill="none" stroke="transparent" strokeWidth={14} />
+      {/* Animated flowing dash line */}
+      <path
+        d={d} fill="none" stroke={edgeClr}
+        strokeWidth={isAmber ? 2 : 1.5}
         strokeLinecap="round"
-        markerEnd={variant === 'question' ? 'url(#arrowAmber)' : 'url(#arrowhead)'}
-        opacity={variant === 'question' ? 0.75 : 1}
+        className={isAmber ? 'edge-flow-amber' : 'edge-flow'}
+        markerEnd={isAmber ? 'url(#arrowAmber)' : 'url(#arrowhead)'}
+        opacity={isAmber ? 0.85 : 0.9}
       />
-      {edge.label && variant !== 'question' && (
+      {edge.label && !isAmber && (
         <>
           <rect x={mx - 30} y={my - 11} width={60} height={19} rx={5} fill={t.panelBg} stroke={t.cardBorder} strokeWidth={1} />
           <text x={mx} y={my + 4} textAnchor="middle" fontSize={10} fill={t.textSecondary}
@@ -310,8 +327,101 @@ function EdgeLine({ edge, nodes, variant, t, isDark }: {
   );
 }
 
+// ── Context menu ───────────────────────────────────────────────────────────
+interface CtxMenuProps {
+  x: number; y: number; nodeId: string | null;
+  isDark: boolean; t: ThemeColors; acc: { color: string };
+  canUndo: boolean; canRedo: boolean;
+  onUndo(): void; onRedo(): void; onReCenter(): void; onAddNode(): void;
+  onDuplicate(): void; onRename(): void; onDelete(): void; onDisconnect(): void;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+}
+
+function ContextMenu({ x, y, nodeId, isDark, t, acc, canUndo, canRedo, onUndo, onRedo, onReCenter, onAddNode, onDuplicate, onRename, onDelete, onDisconnect, containerRef }: CtxMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ x, y });
+
+  useEffect(() => {
+    if (!menuRef.current || !containerRef.current) return;
+    const m = menuRef.current.getBoundingClientRect();
+    const c = containerRef.current.getBoundingClientRect();
+    let nx = x, ny = y;
+    if (nx + m.width > c.right - 8) nx = x - m.width;
+    if (ny + m.height > c.bottom - 8) ny = y - m.height;
+    setPos({ x: nx, y: ny });
+  }, [x, y, containerRef]);
+
+  const bg = isDark ? '#1e293b' : '#ffffff';
+  const border = isDark ? '#334155' : '#e2e8f0';
+  const hoverBg = isDark ? '#334155' : '#f1f5f9';
+  const dividerColor = isDark ? '#334155' : '#f1f5f9';
+  const text = t.textPrimary;
+  const muted = t.textMuted;
+
+  const item = (label: string, onClick: () => void, color?: string, disabled?: boolean): React.ReactNode => (
+    <button
+      key={label}
+      onClick={disabled ? undefined : onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        width: '100%', padding: '7px 14px', background: 'none', border: 'none',
+        textAlign: 'left', cursor: disabled ? 'default' : 'pointer',
+        fontSize: 12, fontFamily: 'ui-sans-serif,system-ui,sans-serif',
+        color: disabled ? muted : (color ?? text),
+        opacity: disabled ? 0.4 : 1,
+        borderRadius: 6,
+      }}
+      onMouseEnter={e => { if (!disabled) (e.currentTarget as HTMLElement).style.background = hoverBg; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
+    >
+      {label}
+    </button>
+  );
+
+  const divider = <div style={{ height: 1, background: dividerColor, margin: '4px 0' }} />;
+
+  return (
+    <div
+      ref={menuRef}
+      onMouseDown={e => e.stopPropagation()}
+      style={{
+        position: 'fixed', left: pos.x, top: pos.y, zIndex: 9999,
+        background: bg, border: `1px solid ${border}`,
+        borderRadius: 10, padding: '5px 0', minWidth: 180,
+        boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.12)',
+        fontFamily: 'ui-sans-serif,system-ui,sans-serif',
+      }}
+    >
+      {nodeId ? (
+        <>
+          <div style={{ padding: '4px 14px 6px', fontSize: 10, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Node</div>
+          {item('Rename (dbl-click)', onRename)}
+          {item('Duplicate', onDuplicate)}
+          {item('Disconnect all edges', onDisconnect)}
+          {divider}
+          {item('Delete node', onDelete, '#ef4444')}
+        </>
+      ) : (
+        <>
+          <div style={{ padding: '4px 14px 6px', fontSize: 10, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Canvas</div>
+          {item('Add node here', onAddNode, acc.color)}
+          {item('Re-center (Ctrl+0)', onReCenter)}
+          {divider}
+          {item('Undo (Ctrl+Z)', onUndo, undefined, !canUndo)}
+          {item('Redo (Ctrl+Y)', onRedo, undefined, !canRedo)}
+        </>
+      )}
+    </div>
+  );
+}
+
 let _nodeSeq = 0;
 let _edgeSeq = 0;
+
+interface CtxMenu {
+  x: number; y: number;             // screen position
+  nodeId: string | null;            // null = canvas right-click
+}
 
 export function DiagramEditor({
   initialModel, onChange, onExport, height = 600,
@@ -319,6 +429,9 @@ export function DiagramEditor({
 }: DiagramEditorProps) {
   const base: DiagramModel = initialModel ?? { type: 'flowchart', nodes: [], edges: [] };
   const [model, setModel] = useState<DiagramModel>(base);
+  // History for undo/redo
+  const historyRef = useRef<DiagramModel[]>([base]);
+  const historyIdxRef = useRef(0);
   const [transform, setTransform] = useState<Transform>({ x: 60, y: 60, scale: 1 });
   const [selected, setSelected] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -327,10 +440,12 @@ export function DiagramEditor({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [sysDark, setSysDark] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false
   );
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Listen for system theme changes
   useEffect(() => {
@@ -345,6 +460,87 @@ export function DiagramEditor({
   const t = isDark ? darkTheme : lightTheme;
 
   const notify = useCallback((m: DiagramModel) => onChange?.(m), [onChange]);
+
+  // Push a new state onto the undo stack
+  const pushHistory = useCallback((m: DiagramModel) => {
+    const stack = historyRef.current.slice(0, historyIdxRef.current + 1);
+    stack.push(m);
+    if (stack.length > 80) stack.shift();
+    historyRef.current = stack;
+    historyIdxRef.current = stack.length - 1;
+  }, []);
+
+  const applyModel = useCallback((m: DiagramModel) => {
+    setModel(m); notify(m);
+  }, [notify]);
+
+  const applyAndPush = useCallback((m: DiagramModel) => {
+    pushHistory(m); applyModel(m);
+  }, [pushHistory, applyModel]);
+
+  const undo = useCallback(() => {
+    if (historyIdxRef.current <= 0) return;
+    historyIdxRef.current--;
+    const m = historyRef.current[historyIdxRef.current];
+    setModel(m); notify(m);
+  }, [notify]);
+
+  const redo = useCallback(() => {
+    if (historyIdxRef.current >= historyRef.current.length - 1) return;
+    historyIdxRef.current++;
+    const m = historyRef.current[historyIdxRef.current];
+    setModel(m); notify(m);
+  }, [notify]);
+
+  const reCenter = useCallback(() => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const W = rect.width, H = rect.height;
+    if (model.nodes.length === 0) { setTransform({ x: W / 2, y: H / 2, scale: 1 }); return; }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of model.nodes) {
+      const nx = n.x ?? 0, ny = n.y ?? 0;
+      const nw = variant === 'question' ? Q_W : NODE_W;
+      const nh = variant === 'question' ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
+      minX = Math.min(minX, nx); minY = Math.min(minY, ny);
+      maxX = Math.max(maxX, nx + nw); maxY = Math.max(maxY, ny + nh);
+    }
+    const pad = 48;
+    const scaleX = (W - pad * 2) / (maxX - minX || 1);
+    const scaleY = (H - pad * 2) / (maxY - minY || 1);
+    const scale = Math.min(1.5, Math.max(0.2, Math.min(scaleX, scaleY)));
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    setTransform({ scale, x: W / 2 - cx * scale, y: H / 2 - cy * scale });
+  }, [model.nodes, variant]);
+
+  const duplicateNode = useCallback((nodeId: string) => {
+    const node = model.nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    const id = `node${++_nodeSeq}`;
+    const copy = { ...node, id, label: node.label + ' (copy)', x: (node.x ?? 0) + 32, y: (node.y ?? 0) + 32 };
+    const m = { ...model, nodes: [...model.nodes, copy] };
+    applyAndPush(m); setSelected(id);
+  }, [model, applyAndPush]);
+
+  // Close context menu on any click
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    window.addEventListener('mousedown', close);
+    return () => window.removeEventListener('mousedown', close);
+  }, [ctxMenu]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && e.key === 'z') { e.preventDefault(); undo(); }
+      if (ctrl && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); }
+      if (ctrl && e.key === '0') { e.preventDefault(); reCenter(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undo, redo, reCenter]);
 
   const toCanvas = useCallback((clientX: number, clientY: number) => {
     const rect = svgRef.current!.getBoundingClientRect();
@@ -379,7 +575,8 @@ export function DiagramEditor({
     e.stopPropagation();
     const node = model.nodes.find(n => n.id === nodeId)!;
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    setLiveEdge({ fromId: nodeId, fromX: (node.x ?? 0) + Q_W, fromY: (node.y ?? 0) + portYInNode, exitDir: 'right', answerLabel: answer, toX: x, toY: y });
+    // Port is on the LEFT side now
+    setLiveEdge({ fromId: nodeId, fromX: node.x ?? 0, fromY: (node.y ?? 0) + portYInNode, exitDir: 'left', answerLabel: answer, toX: x, toY: y });
   };
 
   const onNodeMouseDown = (e: React.MouseEvent, id: string) => {
@@ -394,29 +591,38 @@ export function DiagramEditor({
     if (!liveEdge || liveEdge.fromId === targetId) return;
     e.stopPropagation();
     const label = liveEdge.answerLabel;
+    let updated: DiagramModel;
     if (label) {
       const existing = model.edges.find(ex => ex.from === liveEdge.fromId && ex.label === label);
       if (existing) {
-        const updated = { ...model, edges: model.edges.map(ex => ex.id === existing.id ? { ...ex, to: targetId } : ex) };
-        setModel(updated); notify(updated);
+        updated = { ...model, edges: model.edges.map(ex => ex.id === existing.id ? { ...ex, to: targetId } : ex) };
       } else {
-        const newEdge: DiagramEdge = { id: `e${++_edgeSeq}`, from: liveEdge.fromId, to: targetId, label };
-        const updated = { ...model, edges: [...model.edges, newEdge] };
-        setModel(updated); notify(updated);
+        updated = { ...model, edges: [...model.edges, { id: `e${++_edgeSeq}`, from: liveEdge.fromId, to: targetId, label }] };
       }
     } else {
-      const newEdge: DiagramEdge = { id: `e${++_edgeSeq}`, from: liveEdge.fromId, to: targetId };
-      const updated = { ...model, edges: [...model.edges, newEdge] };
-      setModel(updated); notify(updated);
+      updated = { ...model, edges: [...model.edges, { id: `e${++_edgeSeq}`, from: liveEdge.fromId, to: targetId }] };
     }
+    applyAndPush(updated);
     setLiveEdge(null);
   };
 
   const onSvgMouseDown = (e: React.MouseEvent) => {
+    if (ctxMenu) { setCtxMenu(null); return; }
     if ((e.target as SVGElement).dataset.bg === '1' || e.target === svgRef.current) {
       setSelected(null);
       setPan({ ox: e.clientX, oy: e.clientY, tx: transform.x, ty: transform.y });
     }
+  };
+
+  const onSvgContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setCtxMenu({ x: e.clientX, y: e.clientY, nodeId: null });
+  };
+
+  const onNodeContextMenu = (e: React.MouseEvent, nodeId: string) => {
+    e.preventDefault(); e.stopPropagation();
+    setSelected(nodeId);
+    setCtxMenu({ x: e.clientX, y: e.clientY, nodeId });
   };
 
   const onMouseMove = (e: React.MouseEvent) => {
@@ -445,24 +651,28 @@ export function DiagramEditor({
 
   const commitEdit = () => {
     if (!editingId) return;
-    setModel(m => { const up = { ...m, nodes: m.nodes.map(n => n.id === editingId ? { ...n, label: editLabel } : n) }; notify(up); return up; });
+    const up = { ...model, nodes: model.nodes.map(n => n.id === editingId ? { ...n, label: editLabel } : n) };
+    applyAndPush(up);
     setEditingId(null);
   };
 
-  const addNode = () => {
+  const addNode = (atCanvasPos?: { x: number; y: number }) => {
     const id = `node${++_nodeSeq}`;
-    const p = { x: snap(100 + Math.random() * 240), y: snap(100 + Math.random() * 180) };
+    const p = atCanvasPos
+      ? { x: snap(atCanvasPos.x), y: snap(atCanvasPos.y) }
+      : { x: snap(100 + Math.random() * 240), y: snap(100 + Math.random() * 180) };
     const label = variant === 'question' ? 'New Question' : variant === 'journey' ? `Step ${model.nodes.length + 1}` : 'New Step';
     const metadata = variant === 'question' ? { answers: [] } : undefined;
     const updated = { ...model, nodes: [...model.nodes, { id, label, shape: 'rectangle' as const, metadata, ...p }] };
-    setModel(updated); notify(updated); setSelected(id);
+    applyAndPush(updated); setSelected(id);
   };
 
-  const deleteSelected = () => {
-    if (!selected) return;
-    const updated = { ...model, nodes: model.nodes.filter(n => n.id !== selected), edges: model.edges.filter(e => e.from !== selected && e.to !== selected) };
-    setModel(updated); notify(updated); setSelected(null);
+  const deleteNode = (nodeId: string) => {
+    const updated = { ...model, nodes: model.nodes.filter(n => n.id !== nodeId), edges: model.edges.filter(e => e.from !== nodeId && e.to !== nodeId) };
+    applyAndPush(updated); if (selected === nodeId) setSelected(null);
   };
+
+  const deleteSelected = () => { if (selected) deleteNode(selected); };
 
   const handleExport = useCallback(async (format: ExportFormat) => {
     let content: string | Blob;
@@ -483,9 +693,9 @@ export function DiagramEditor({
     try {
       const m = text.trim().startsWith('{') ? fromJSON(text).toJSON() : fromMermaid(text).toJSON();
       const nodes = m.nodes.map((n, i) => ({ ...n, x: n.x ?? snap(80 + (i % 4) * 200), y: n.y ?? snap(80 + Math.floor(i / 4) * 140) }));
-      const updated = { ...m, nodes }; setModel(updated); notify(updated);
+      const updated = { ...m, nodes }; applyAndPush(updated);
     } catch (err) { alert(`Import failed: ${(err as Error).message}`); }
-  }, [notify]);
+  }, [applyAndPush]);
 
   const acc = variantAccent(variant, isDark);
   const variantLabel = variant === 'question' ? 'Question' : variant === 'journey' ? 'Step' : 'Node';
@@ -499,7 +709,7 @@ export function DiagramEditor({
 
       {/* Controls bar */}
       <div style={{ display: 'flex', gap: 6, padding: '7px 14px', background: t.ctrlsBg, borderBottom: `1px solid ${t.ctrlsBorder}`, alignItems: 'center', flexWrap: 'wrap' }}>
-        <button onClick={addNode} style={ctrlBtn(acc.color, isDark)}>+ {variantLabel}</button>
+        <button onClick={() => addNode()} style={ctrlBtn(acc.color, isDark)}>+ {variantLabel}</button>
         {selected && (
           <>
             <div style={{ width: 1, height: 20, background: t.ctrlsBorder, margin: '0 2px' }} />
@@ -524,7 +734,7 @@ export function DiagramEditor({
       )}
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <div style={{ flex: 1, overflow: 'hidden', position: 'relative', background: t.canvas }}>
+        <div ref={containerRef} style={{ flex: 1, overflow: 'hidden', position: 'relative', background: t.canvas }}>
           <svg
             ref={svgRef}
             width="100%" height="100%"
@@ -533,8 +743,16 @@ export function DiagramEditor({
             onMouseMove={onMouseMove}
             onMouseUp={onMouseUp}
             onMouseLeave={onMouseUp}
+            onContextMenu={onSvgContextMenu}
           >
             <defs>
+              <style>{`
+                @keyframes edgeFlow { to { stroke-dashoffset: -13; } }
+                @keyframes edgeFlowFast { to { stroke-dashoffset: -13; } }
+                .edge-flow { stroke-dasharray: 8 5; animation: edgeFlow 0.9s linear infinite; }
+                .edge-flow-amber { stroke-dasharray: 6 4; animation: edgeFlowFast 0.65s linear infinite; }
+                .edge-live { stroke-dasharray: 7 5; animation: edgeFlow 0.55s linear infinite; }
+              `}</style>
               <pattern id="dots" width={GRID} height={GRID} patternUnits="userSpaceOnUse">
                 <circle cx={GRID / 2} cy={GRID / 2} r={1} fill={t.dot} />
               </pattern>
@@ -559,7 +777,7 @@ export function DiagramEditor({
 
               {liveEdge && (() => {
                 const d = bezierPath(liveEdge.fromX, liveEdge.fromY, liveEdge.toX, liveEdge.toY, liveEdge.exitDir);
-                return <path d={d} fill="none" stroke={acc.color} strokeWidth={2} strokeDasharray="6,3" strokeLinecap="round" opacity={0.75} markerEnd="url(#arrowLive)" />;
+                return <path d={d} fill="none" stroke={acc.color} strokeWidth={2} strokeLinecap="round" className="edge-live" opacity={0.8} markerEnd="url(#arrowLive)" />;
               })()}
 
               {model.nodes.map((node, idx) => {
@@ -576,6 +794,7 @@ export function DiagramEditor({
                     onMouseDown={e => onNodeMouseDown(e, node.id)}
                     onMouseUp={e => onNodeMouseUp(e, node.id)}
                     onDoubleClick={e => onNodeDblClick(e, node.id)}
+                    onContextMenu={e => onNodeContextMenu(e, node.id)}
                     onMouseEnter={() => setHoveredId(node.id)}
                     onMouseLeave={() => setHoveredId(null)}
                   >
@@ -625,10 +844,43 @@ export function DiagramEditor({
               <div style={{ fontSize: 13, color: t.textMuted, fontWeight: 500 }}>Click <strong style={{ color: acc.color }}>+ {variantLabel}</strong> to start</div>
             </div>
           )}
+
+          {/* Context menu */}
+          {ctxMenu && <ContextMenu
+            x={ctxMenu.x} y={ctxMenu.y}
+            nodeId={ctxMenu.nodeId}
+            isDark={isDark} t={t} acc={acc}
+            canUndo={historyIdxRef.current > 0}
+            canRedo={historyIdxRef.current < historyRef.current.length - 1}
+            onUndo={() => { undo(); setCtxMenu(null); }}
+            onRedo={() => { redo(); setCtxMenu(null); }}
+            onReCenter={() => { reCenter(); setCtxMenu(null); }}
+            onAddNode={() => {
+              const rect = svgRef.current!.getBoundingClientRect();
+              const cx = (ctxMenu.x - rect.left - transform.x) / transform.scale;
+              const cy = (ctxMenu.y - rect.top - transform.y) / transform.scale;
+              addNode({ x: cx, y: cy }); setCtxMenu(null);
+            }}
+            onDuplicate={() => { if (ctxMenu.nodeId) { duplicateNode(ctxMenu.nodeId); setCtxMenu(null); } }}
+            onRename={() => {
+              if (ctxMenu.nodeId) {
+                const node = model.nodes.find(n => n.id === ctxMenu.nodeId)!;
+                setEditingId(ctxMenu.nodeId); setEditLabel(node.label); setCtxMenu(null);
+              }
+            }}
+            onDelete={() => { if (ctxMenu.nodeId) { deleteNode(ctxMenu.nodeId); setCtxMenu(null); } }}
+            onDisconnect={() => {
+              if (ctxMenu.nodeId) {
+                const m = { ...model, edges: model.edges.filter(e => e.from !== ctxMenu.nodeId && e.to !== ctxMenu.nodeId) };
+                applyAndPush(m); setCtxMenu(null);
+              }
+            }}
+            containerRef={containerRef}
+          />}
         </div>
 
         {selected && (
-          <StepEditor key={selected} nodeId={selected} model={model} onModelChange={m => { setModel(m); notify(m); }} variant={variant} isDark={isDark} t={t} acc={acc} />
+          <StepEditor key={selected} nodeId={selected} model={model} onModelChange={m => { applyAndPush(m); }} variant={variant} isDark={isDark} t={t} acc={acc} />
         )}
       </div>
 
@@ -636,6 +888,7 @@ export function DiagramEditor({
         <span>{model.nodes.length} {variantLabel.toLowerCase()}s</span>
         <span>{model.edges.length} connections</span>
         <span>{Math.round(transform.scale * 100)}% zoom</span>
+        <span style={{ marginLeft: 'auto' }}>Ctrl+Z undo · Ctrl+Y redo · Ctrl+0 fit</span>
         {selected && <span style={{ color: acc.color }}>{model.nodes.find(n => n.id === selected)?.label}</span>}
       </div>
     </div>
