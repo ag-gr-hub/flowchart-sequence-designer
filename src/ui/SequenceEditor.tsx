@@ -7,6 +7,7 @@ import { toJSON } from '../exporters/json.js';
 import { toSVG, toPNG } from '../exporters/svg.js';
 import { fromMermaid } from '../importers/mermaid.js';
 import { fromJSON } from '../importers/json.js';
+import { useIsDark } from './hooks/useSystemTheme.js';
 
 const INDIGO = '#4f46e5';
 const INDIGO_SOFT = '#eef2ff';
@@ -109,21 +110,11 @@ export function SequenceEditor({
   const [dragMsgId, setDragMsgId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
-  const [sysDark, setSysDark] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false);
   const historyRef = useRef<DiagramModel[]>([ensureSequenceModel(initialModel)]);
   const historyIdxRef = useRef(0);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  useEffect(() => {
-    if (theme !== 'auto') return;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = (e: MediaQueryListEvent) => setSysDark(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, [theme]);
-
-  const isDark = theme === 'dark' || (theme === 'auto' && sysDark);
+  const isDark = useIsDark(theme);
   const t = useMemo<SequenceThemeColors>(
     () => ({ ...(isDark ? darkTheme : lightTheme), ...(themeOverrides ?? {}) }),
     [isDark, themeOverrides],
