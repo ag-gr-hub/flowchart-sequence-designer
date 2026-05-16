@@ -19,6 +19,13 @@ export interface DiagramEdge {
   label?: string;
   style?: 'solid' | 'dashed' | 'dotted';
   arrowhead?: 'arrow' | 'none' | 'open';
+  /**
+   * Optional manual waypoint in canvas coordinates. When set, the edge is
+   * routed as two cubic segments that meet at this point. Persisted in JSON
+   * exports; ignored by Mermaid/PlantUML serializers (those formats don't
+   * encode routing).
+   */
+  waypoint?: { x: number; y: number };
 }
 
 export interface SequenceMessage {

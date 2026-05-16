@@ -11,6 +11,8 @@ import {
   questionNodeH,
   snap,
   bezierPath,
+  bezierPathVia,
+  bezierMidpoint,
 } from '../ui/layout.js';
 
 describe('layout helpers', () => {
@@ -132,5 +134,29 @@ describe('layout helpers', () => {
     expect(MIN_NODE_W).toBeLessThan(MAX_NODE_W);
     expect(MIN_Q_W).toBeGreaterThan(0);
     expect(GRID).toBeGreaterThan(0);
+  });
+
+  describe('bezierPathVia', () => {
+    it('produces a single continuous M / C / C path', () => {
+      const d = bezierPathVia(0, 0, 50, 100, 100, 200);
+      expect(d.startsWith('M 0 0')).toBe(true);
+      // Two cubic segments — exactly two "C " tokens.
+      expect(d.match(/ C /g)?.length).toBe(2);
+      // Waypoint coordinates appear in the path.
+      expect(d).toContain('50 100');
+    });
+
+    it('does not duplicate the M command for the second segment', () => {
+      const d = bezierPathVia(0, 0, 50, 100, 100, 200);
+      expect(d.match(/M /g)?.length).toBe(1);
+    });
+  });
+
+  describe('bezierMidpoint', () => {
+    it('returns the geometric midpoint of the endpoints', () => {
+      const m = bezierMidpoint(0, 0, 200, 400);
+      expect(m.x).toBe(100);
+      expect(m.y).toBe(200);
+    });
   });
 });

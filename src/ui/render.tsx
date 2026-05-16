@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { DiagramNode, DiagramEdge, DiagramVariant } from '../core/types.js';
 import {
   NODE_H,
@@ -11,6 +11,7 @@ import {
   questionNodeW,
   questionNodeH,
   bezierPath,
+  bezierPathVia,
 } from './layout.js';
 import { ACCENT as C, variantAccent, type ThemeColors } from './theme.js';
 
@@ -185,7 +186,7 @@ export function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, 
 }
 
 // ── Edge ───────────────────────────────────────────────────────────────────
-export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editValue, onEditChange, onEditCommit, onEditCancel, onDoubleClick, onContextMenu }: {
+export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editValue, onEditChange, onEditCommit, onEditCancel, onDoubleClick, onContextMenu, onWaypointDown }: {
   edge: DiagramEdge; nodes: DiagramNode[]; variant: DiagramVariant;
   t: ThemeColors; isDark: boolean;
   acc: { color: string };
@@ -196,7 +197,9 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
   onEditCancel?: () => void;
   onDoubleClick?: (edgeId: string) => void;
   onContextMenu?: (e: React.MouseEvent, edgeId: string) => void;
+  onWaypointDown?: (e: React.MouseEvent, edgeId: string) => void;
 }) {
+  const [hovered, setHovered] = useState(false);
   const from = nodes.find(n => n.id === edge.from);
   const to = nodes.find(n => n.id === edge.to);
   if (!from || !to) return null;
@@ -227,18 +230,25 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
   const toW = variant === 'question' ? questionNodeW(to) : nodeWidth(to.label);
   const x2 = (to.x ?? 0) + toW / 2;
   const y2 = to.y ?? 0;
-  const d = bezierPath(x1, y1, x2, y2, exitDir);
-  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2 - 8;
+  const wp = edge.waypoint;
+  const d = wp ? bezierPathVia(x1, y1, wp.x, wp.y, x2, y2) : bezierPath(x1, y1, x2, y2, exitDir);
+  // Handle position: at the waypoint when set; otherwise at the natural midpoint of the cubic.
+  const hx = wp ? wp.x : (x1 + x2) / 2;
+  const hy = wp ? wp.y : (y1 + y2) / 2;
+  const mx = hx, my = hy - 8;
   const dash = edge.style === 'dashed' ? '7,4' : edge.style === 'dotted' ? '2,4' : undefined;
   const edgeClr = variant === 'question' ? amberColor : t.edgeColor;
 
   const isAmber = variant === 'question';
   const labelW = edge.label ? Math.max(60, Math.ceil(estimateTextW(edge.label, 7) + 18)) : 60;
+  const showHandle = !!onWaypointDown && (hovered || !!wp);
   void dash;
   return (
     <g
       onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick?.(edge.id); }}
       onContextMenu={(e) => { onContextMenu?.(e, edge.id); }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       <path d={d} fill="none" stroke="transparent" strokeWidth={14} style={{ cursor: 'pointer' }} />
       <path
@@ -250,6 +260,15 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
         opacity={isAmber ? 0.85 : 0.9}
         style={{ pointerEvents: 'none' }}
       />
+      {showHandle && (
+        <circle
+          cx={hx} cy={hy} r={wp ? 5 : 4}
+          fill={wp ? acc.color : (isDark ? '#1e293b' : '#fff')}
+          stroke={acc.color} strokeWidth={1.5}
+          style={{ cursor: 'grab', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.25))' }}
+          onMouseDown={(e) => { e.stopPropagation(); onWaypointDown?.(e, edge.id); }}
+        />
+      )}
       {editing && !isAmber ? (
         <foreignObject x={mx - labelW / 2} y={my - 12} width={labelW} height={22}>
           <input

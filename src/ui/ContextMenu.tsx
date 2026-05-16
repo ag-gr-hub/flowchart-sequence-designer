@@ -18,16 +18,18 @@ export interface ContextMenuProps {
   onEdgeStyle?(style: 'solid' | 'dashed' | 'dotted'): void;
   onEdgeArrowhead?(arrow: 'arrow' | 'none'): void;
   onEdgeDelete?(): void;
+  onEdgeResetRouting?(): void;
   currentEdgeStyle?: 'solid' | 'dashed' | 'dotted';
   currentEdgeArrow?: 'arrow' | 'none' | 'open';
+  edgeHasWaypoint?: boolean;
   containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export function ContextMenu({
   x, y, nodeId, edgeId, isDark, t, acc, canUndo, canRedo,
   onUndo, onRedo, onReCenter, onAddNode, onDuplicate, onRename, onDelete, onDisconnect,
-  onEdgeRename, onEdgeStyle, onEdgeArrowhead, onEdgeDelete,
-  currentEdgeStyle, currentEdgeArrow, containerRef,
+  onEdgeRename, onEdgeStyle, onEdgeArrowhead, onEdgeDelete, onEdgeResetRouting,
+  currentEdgeStyle, currentEdgeArrow, edgeHasWaypoint, containerRef,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x, y });
@@ -97,6 +99,7 @@ export function ContextMenu({
           {item(`Arrow${currentEdgeArrow !== 'none' ? ' ✓' : ''}`, () => onEdgeArrowhead?.('arrow'))}
           {item(`None${currentEdgeArrow === 'none' ? ' ✓' : ''}`, () => onEdgeArrowhead?.('none'))}
           {divider}
+          {item('Reset routing', () => onEdgeResetRouting?.(), undefined, !edgeHasWaypoint)}
           {item('Delete edge', () => onEdgeDelete?.(), '#ef4444')}
         </>
       ) : nodeId ? (
