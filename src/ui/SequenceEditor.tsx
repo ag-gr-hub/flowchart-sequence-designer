@@ -12,7 +12,18 @@ const INDIGO = '#4f46e5';
 const INDIGO_SOFT = '#eef2ff';
 const INDIGO_BORDER = '#c7d2fe';
 
-const lightTheme = {
+export interface SequenceThemeColors {
+  canvas: string; dot: string;
+  panelBg: string; panelBorder: string;
+  ctrlsBg: string; ctrlsBorder: string;
+  inputBg: string; inputBorder: string; inputText: string;
+  textPrimary: string; textSecondary: string; textMuted: string;
+  cardBg: string; cardBorder: string;
+  lifeline: string; arrow: string;
+  actorFill: string; actorStroke: string; actorText: string;
+}
+
+const lightTheme: SequenceThemeColors = {
   canvas: '#fafbfc',
   dot: '#dbe3ee',
   panelBg: '#ffffff',
@@ -33,7 +44,7 @@ const lightTheme = {
   actorStroke: '#c7d2fe',
   actorText: '#4338ca',
 };
-const darkTheme = {
+const darkTheme: SequenceThemeColors = {
   canvas: '#0f172a',
   dot: '#1e293b',
   panelBg: '#1e293b',
@@ -70,6 +81,12 @@ export interface SequenceEditorProps {
   allowedExports?: ExportFormat[];
   allowImport?: boolean;
   theme?: 'light' | 'dark' | 'auto';
+  /**
+   * Override individual colors in the resolved sequence-diagram theme.
+   * Applied on top of the built-in light/dark palette. `themeOverrides`
+   * passed to DiagramEditor is forwarded here when type === 'sequence'.
+   */
+  themeOverrides?: Partial<SequenceThemeColors>;
 }
 
 let _msgSeq = 0;
@@ -85,6 +102,7 @@ function ensureSequenceModel(m?: DiagramModel): DiagramModel {
 export function SequenceEditor({
   initialModel, onChange, onExport, height = 600,
   allowedExports, allowImport = true, theme = 'auto',
+  themeOverrides,
 }: SequenceEditorProps) {
   const [model, setModel] = useState<DiagramModel>(() => ensureSequenceModel(initialModel));
   const [selected, setSelected] = useState<string | null>(null);
@@ -106,7 +124,10 @@ export function SequenceEditor({
   }, [theme]);
 
   const isDark = theme === 'dark' || (theme === 'auto' && sysDark);
-  const t = isDark ? darkTheme : lightTheme;
+  const t = useMemo<SequenceThemeColors>(
+    () => ({ ...(isDark ? darkTheme : lightTheme), ...(themeOverrides ?? {}) }),
+    [isDark, themeOverrides],
+  );
 
   const actors = model.actors ?? [];
   const messages = model.messages ?? [];

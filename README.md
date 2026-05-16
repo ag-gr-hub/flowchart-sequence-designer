@@ -139,6 +139,10 @@ import { DiagramEditor } from 'flowchart-sequence-designer/ui';
   theme="auto"                  // 'light' | 'dark' | 'auto'
   allowedExports={['json','svg']} // restrict visible export buttons
   allowImport={true}            // show/hide the Import button
+  themeOverrides={{             // optional per-color overrides
+    canvas: '#0b0f1a',
+    nodeSelectedFill: '#1f2a44',
+  }}
 />
 ```
 
@@ -203,6 +207,30 @@ import { DiagramEditor } from 'flowchart-sequence-designer/ui';
 <DiagramEditor theme="light" />   // force light
 <DiagramEditor theme="auto" />    // follows system prefers-color-scheme (default)
 ```
+
+To match the editor to a host application's brand, pass `themeOverrides` —
+a `Partial<ThemeColors>` that is shallow-merged on top of the resolved
+light/dark palette:
+
+```tsx
+import { DiagramEditor, type ThemeColors } from 'flowchart-sequence-designer/ui';
+
+const brand: Partial<ThemeColors> = {
+  canvas: '#0b1020',
+  nodeFill: '#111a2e',
+  nodeStroke: '#2b3a5a',
+  nodeSelectedFill: '#1a2447',
+  edgeColor: '#7b8aa6',
+  textPrimary: '#e6edf7',
+};
+
+<DiagramEditor theme="dark" themeOverrides={brand} />;
+```
+
+Every field on `ThemeColors` (canvas, nodeFill, nodeStroke, edgeColor, panelBg,
+inputBg, …) is overridable. Sequence diagrams accept the same prop with a
+slightly different shape — `Partial<SequenceThemeColors>` — also exported from
+`flowchart-sequence-designer/ui`.
 
 ---
 

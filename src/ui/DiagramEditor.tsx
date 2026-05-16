@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Toolbar } from './Toolbar.js';
 import { StepEditor } from './StepEditor.js';
 import { SequenceEditor } from './SequenceEditor.js';
@@ -134,6 +134,12 @@ export interface DiagramEditorProps {
   allowImport?: boolean;
   variant?: DiagramVariant;
   theme?: 'light' | 'dark' | 'auto';
+  /**
+   * Override individual colors in the resolved theme. Applied on top of the
+   * built-in light/dark palette. Useful for matching the editor to a host
+   * application's brand without forking the component.
+   */
+  themeOverrides?: Partial<ThemeColors>;
 }
 
 function snap(v: number) { return Math.round(v / GRID) * GRID; }
@@ -771,6 +777,7 @@ export function DiagramEditor(props: DiagramEditorProps) {
       allowedExports={props.allowedExports}
       allowImport={props.allowImport}
       theme={props.theme}
+      themeOverrides={props.themeOverrides}
     />;
   }
   return <FlowchartEditor {...props} />;
@@ -779,6 +786,7 @@ export function DiagramEditor(props: DiagramEditorProps) {
 function FlowchartEditor({
   initialModel, onChange, onExport, height = 600,
   allowedExports, allowImport = true, variant = 'flowchart', theme = 'auto',
+  themeOverrides,
 }: DiagramEditorProps) {
   const base: DiagramModel = initialModel
     ? { ...initialModel, variant: initialModel.variant ?? variant }
@@ -842,7 +850,10 @@ function FlowchartEditor({
   }, [theme]);
 
   const isDark = theme === 'dark' || (theme === 'auto' && sysDark);
-  const t = isDark ? darkTheme : lightTheme;
+  const t = useMemo<ThemeColors>(
+    () => ({ ...(isDark ? darkTheme : lightTheme), ...(themeOverrides ?? {}) }),
+    [isDark, themeOverrides],
+  );
 
   const notify = useCallback((m: DiagramModel) => onChange?.(m), [onChange]);
 
