@@ -31,6 +31,11 @@ Versioning: [Semantic Versioning](https://semver.org/).
   persisted in JSON exports and ignored by the Mermaid / PlantUML serializers
   (those formats don't encode routing). Right-click an edge → "Reset routing"
   to clear the waypoint.
+- Touch long-press opens the canvas context menu (Add node here, Re-center,
+  Undo, Redo). Significant finger movement cancels the gesture.
+- Port circles grow from 6 to 9 px on `(pointer: coarse)` devices and stay
+  permanently visible (instead of fading in on hover) so they're tappable on
+  touch.
 
 ### Changed
 - Internal refactor: the 1500-line `DiagramEditor.tsx` monolith is split into
