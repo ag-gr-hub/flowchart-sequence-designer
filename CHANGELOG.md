@@ -12,6 +12,15 @@ Versioning: [Semantic Versioning](https://semver.org/).
   top of the resolved light/dark palette so consumers can match the editor to
   their brand without forking. `ThemeColors` and `SequenceThemeColors` are now
   exported from `flowchart-sequence-designer/ui`.
+- Multi-selection on the canvas. `Shift+click` a node to toggle it in/out of
+  the selection. `Shift+drag` on the empty canvas runs a box-select (adds
+  every intersected node to the current selection). `Delete`, `Ctrl+D`, and
+  arrow-key nudging now apply to every selected node. Dragging any selected
+  node moves the whole group. The Delete button in the controls bar shows the
+  current count when more than one node is selected.
+- `Ctrl+C` / `Ctrl+V` copy and paste. Copy snapshots the selected nodes plus
+  the edges that connect them, paste materializes fresh IDs offset by 24px
+  and re-selects the new nodes.
 
 ### Changed
 - Internal refactor: the 1500-line `DiagramEditor.tsx` monolith is split into
@@ -19,6 +28,10 @@ Versioning: [Semantic Versioning](https://semver.org/).
   `ContextMenu.tsx`, `hooks/useHistory.ts`, `hooks/useSystemTheme.ts`). No
   public API or visual change — the file is now ~770 lines and the render
   layer can be imported in isolation.
+
+### Fixed
+- Node drag operations now push to the undo history. Previously the drag
+  mutated state directly and was lost on `Ctrl+Z`.
 
 ## [1.0.0] - 2026-05-16
 

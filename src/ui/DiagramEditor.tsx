@@ -88,9 +88,38 @@ function FlowchartEditor({
   const { state: model, apply: applyModel, applyAndPush, undo, redo } = history;
   const [transform, setTransform] = useState<Transform>({ x: 60, y: 60, scale: 1 });
   const [selected, setSelected] = useState<string | null>(null);
+  const [selectedSet, setSelectedSet] = useState<Set<string>>(() => new Set());
   const [drag, setDrag] = useState<DragState | null>(null);
   const [pan, setPan] = useState<{ ox: number; oy: number; tx: number; ty: number } | null>(null);
+  const [boxSel, setBoxSel] = useState<{ sx: number; sy: number; cx: number; cy: number; additive: boolean } | null>(null);
   const [liveEdge, setLiveEdge] = useState<LiveEdge | null>(null);
+  const groupDragOriginsRef = useRef<Map<string, { ox: number; oy: number }> | null>(null);
+  const clipboardRef = useRef<{ nodes: DiagramNode[]; edges: DiagramEdge[] } | null>(null);
+
+  const selectOne = useCallback((id: string | null) => {
+    setSelected(id);
+    setSelectedSet(id ? new Set([id]) : new Set());
+  }, []);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedSet(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        const last = next.size ? Array.from(next)[next.size - 1] : null;
+        setSelected(last);
+      } else {
+        next.add(id);
+        setSelected(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelected(null);
+    setSelectedSet(new Set());
+  }, []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
@@ -157,17 +186,39 @@ function FlowchartEditor({
     const cy = (node.y ?? 0) + nh / 2;
     const scale = Math.min(Math.max(transform.scale, 0.8), 1.4);
     setTransform({ scale, x: rect.width / 2 - cx * scale, y: rect.height / 2 - cy * scale });
-    setSelected(nodeId);
-  }, [model.nodes, variant, transform.scale]);
+    selectOne(nodeId);
+  }, [model.nodes, variant, transform.scale, selectOne]);
 
-  const duplicateNode = useCallback((nodeId: string) => {
-    const node = model.nodes.find(n => n.id === nodeId);
-    if (!node) return;
-    const id = `node${++_nodeSeq}`;
-    const copy = { ...node, id, label: node.label + ' (copy)', x: (node.x ?? 0) + 32, y: (node.y ?? 0) + 32 };
-    const m = { ...model, nodes: [...model.nodes, copy] };
-    applyAndPush(m); setSelected(id);
+  const duplicateIds = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const idMap = new Map<string, string>();
+    const newNodes: DiagramNode[] = [];
+    for (const oldId of ids) {
+      const n = model.nodes.find(x => x.id === oldId);
+      if (!n) continue;
+      const newId = `node${++_nodeSeq}`;
+      idMap.set(oldId, newId);
+      newNodes.push({
+        ...n, id: newId,
+        label: ids.length === 1 ? n.label + ' (copy)' : n.label,
+        x: (n.x ?? 0) + 32, y: (n.y ?? 0) + 32,
+      });
+    }
+    const newEdges: DiagramEdge[] = [];
+    for (const e of model.edges) {
+      if (idSet.has(e.from) && idSet.has(e.to)) {
+        newEdges.push({ ...e, id: `e${++_edgeSeq}`, from: idMap.get(e.from)!, to: idMap.get(e.to)! });
+      }
+    }
+    const m = { ...model, nodes: [...model.nodes, ...newNodes], edges: [...model.edges, ...newEdges] };
+    applyAndPush(m);
+    const newIds = newNodes.map(n => n.id);
+    setSelected(newIds[newIds.length - 1] ?? null);
+    setSelectedSet(new Set(newIds));
   }, [model, applyAndPush]);
+
+  const duplicateNode = useCallback((nodeId: string) => { duplicateIds([nodeId]); }, [duplicateIds]);
 
   // Close context menu on any click
   useEffect(() => {
@@ -189,7 +240,45 @@ function FlowchartEditor({
       if (ctrl && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); return; }
       if (ctrl && e.key === '0') { e.preventDefault(); reCenter(); return; }
       if (ctrl && (e.key === 'd' || e.key === 'D')) {
-        if (selected) { e.preventDefault(); duplicateNode(selected); }
+        if (selectedSet.size > 0) { e.preventDefault(); duplicateIds(Array.from(selectedSet)); }
+        return;
+      }
+
+      if (ctrl && (e.key === 'c' || e.key === 'C')) {
+        if (selectedSet.size > 0) {
+          e.preventDefault();
+          const ids = new Set(selectedSet);
+          const nodes = model.nodes.filter(n => ids.has(n.id));
+          const edges = model.edges.filter(ed => ids.has(ed.from) && ids.has(ed.to));
+          clipboardRef.current = {
+            nodes: nodes.map(n => ({ ...n })),
+            edges: edges.map(ed => ({ ...ed })),
+          };
+        }
+        return;
+      }
+      if (ctrl && (e.key === 'v' || e.key === 'V')) {
+        const clip = clipboardRef.current;
+        if (clip && clip.nodes.length > 0) {
+          e.preventDefault();
+          const idMap = new Map<string, string>();
+          const newNodes: DiagramNode[] = clip.nodes.map(n => {
+            const newId = `node${++_nodeSeq}`;
+            idMap.set(n.id, newId);
+            return { ...n, id: newId, x: (n.x ?? 0) + 24, y: (n.y ?? 0) + 24 };
+          });
+          const newEdges: DiagramEdge[] = clip.edges.map(ed => ({
+            ...ed, id: `e${++_edgeSeq}`,
+            from: idMap.get(ed.from) ?? ed.from,
+            to: idMap.get(ed.to) ?? ed.to,
+          }));
+          const m = { ...model, nodes: [...model.nodes, ...newNodes], edges: [...model.edges, ...newEdges] };
+          applyAndPush(m);
+          const newIds = newNodes.map(n => n.id);
+          setSelected(newIds[newIds.length - 1]);
+          setSelectedSet(new Set(newIds));
+          setAnnouncement(`Pasted ${newIds.length} ${variantLabel.toLowerCase()}${newIds.length === 1 ? '' : 's'}.`);
+        }
         return;
       }
 
@@ -197,24 +286,34 @@ function FlowchartEditor({
         if (ctxMenu) setCtxMenu(null);
         if (liveEdge) setLiveEdge(null);
         if (editingId) setEditingId(null);
-        if (selected) setSelected(null);
+        if (boxSel) setBoxSel(null);
+        if (selectedSet.size > 0) clearSelection();
         return;
       }
 
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selected) {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedSet.size > 0) {
         e.preventDefault();
-        deleteNode(selected);
+        const ids = new Set(selectedSet);
+        const updated = {
+          ...model,
+          nodes: model.nodes.filter(n => !ids.has(n.id)),
+          edges: model.edges.filter(ed => !ids.has(ed.from) && !ids.has(ed.to)),
+        };
+        applyAndPush(updated);
+        clearSelection();
+        setAnnouncement(`Deleted ${ids.size} ${variantLabel.toLowerCase()}${ids.size === 1 ? '' : 's'}.`);
         return;
       }
 
-      if (selected && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      if (selectedSet.size > 0 && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
         e.preventDefault();
         const step = e.shiftKey ? GRID * 4 : GRID;
         const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
         const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+        const ids = selectedSet;
         const updated = {
           ...model,
-          nodes: model.nodes.map(n => n.id === selected
+          nodes: model.nodes.map(n => ids.has(n.id)
             ? { ...n, x: snap((n.x ?? 0) + dx), y: snap((n.y ?? 0) + dy) }
             : n),
         };
@@ -223,7 +322,8 @@ function FlowchartEditor({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [undo, redo, reCenter, selected, ctxMenu, liveEdge, editingId, model, applyAndPush, duplicateNode]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [undo, redo, reCenter, selected, selectedSet, ctxMenu, liveEdge, editingId, boxSel, model, applyAndPush, duplicateNode, clearSelection]);
 
   const toCanvas = useCallback((clientX: number, clientY: number) => {
     const rect = svgRef.current!.getBoundingClientRect();
@@ -333,8 +433,31 @@ function FlowchartEditor({
   const onNodeMouseDown = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (liveEdge) return;
-    setSelected(id);
     const node = model.nodes.find(n => n.id === id)!;
+
+    if (e.shiftKey) {
+      toggleSelect(id);
+      return;
+    }
+
+    const inSet = selectedSet.has(id);
+    if (inSet && selectedSet.size > 1) {
+      // Group drag: keep selection, set primary to this node, record origins for every selected node.
+      setSelected(id);
+      const origins = new Map<string, { ox: number; oy: number }>();
+      for (const sid of selectedSet) {
+        const n = model.nodes.find(x => x.id === sid);
+        if (!n) continue;
+        origins.set(sid, {
+          ox: e.clientX - (transform.x + (n.x ?? 0) * transform.scale),
+          oy: e.clientY - (transform.y + (n.y ?? 0) * transform.scale),
+        });
+      }
+      groupDragOriginsRef.current = origins;
+    } else {
+      selectOne(id);
+      groupDragOriginsRef.current = null;
+    }
     setDrag({ nodeId: id, ox: e.clientX - (transform.x + (node.x ?? 0) * transform.scale), oy: e.clientY - (transform.y + (node.y ?? 0) * transform.scale) });
   };
 
@@ -360,8 +483,13 @@ function FlowchartEditor({
   const onSvgMouseDown = (e: React.MouseEvent) => {
     if (ctxMenu) { setCtxMenu(null); return; }
     if ((e.target as SVGElement).dataset.bg === '1' || e.target === svgRef.current) {
-      setSelected(null);
-      setPan({ ox: e.clientX, oy: e.clientY, tx: transform.x, ty: transform.y });
+      if (e.shiftKey) {
+        // Shift+drag on empty canvas = box-select. Existing selection is preserved (additive).
+        setBoxSel({ sx: e.clientX, sy: e.clientY, cx: e.clientX, cy: e.clientY, additive: true });
+      } else {
+        clearSelection();
+        setPan({ ox: e.clientX, oy: e.clientY, tx: transform.x, ty: transform.y });
+      }
     }
   };
 
@@ -372,7 +500,10 @@ function FlowchartEditor({
 
   const onNodeContextMenu = (e: React.MouseEvent, nodeId: string) => {
     e.preventDefault(); e.stopPropagation();
-    setSelected(nodeId);
+    // Right-click on a node that is NOT already in the multi-selection collapses
+    // selection to just this node (matches Figma / VS Code). Right-clicking a
+    // node that IS part of a multi-selection keeps the group intact.
+    if (!selectedSet.has(nodeId)) selectOne(nodeId);
     setCtxMenu({ x: e.clientX, y: e.clientY, nodeId });
   };
 
@@ -383,16 +514,67 @@ function FlowchartEditor({
       return;
     }
     if (drag) {
-      const x = snap((e.clientX - drag.ox - transform.x) / transform.scale);
-      const y = snap((e.clientY - drag.oy - transform.y) / transform.scale);
-      const updated = { ...model, nodes: model.nodes.map(n => n.id === drag.nodeId ? { ...n, x, y } : n) };
-      applyModel(updated);
+      const dx = snap((e.clientX - drag.ox - transform.x) / transform.scale);
+      const dy = snap((e.clientY - drag.oy - transform.y) / transform.scale);
+      const origins = groupDragOriginsRef.current;
+      if (origins && origins.size > 1) {
+        const updated = {
+          ...model,
+          nodes: model.nodes.map(n => {
+            const o = origins.get(n.id);
+            if (!o) return n;
+            return {
+              ...n,
+              x: snap((e.clientX - o.ox - transform.x) / transform.scale),
+              y: snap((e.clientY - o.oy - transform.y) / transform.scale),
+            };
+          }),
+        };
+        applyModel(updated);
+      } else {
+        const updated = { ...model, nodes: model.nodes.map(n => n.id === drag.nodeId ? { ...n, x: dx, y: dy } : n) };
+        applyModel(updated);
+      }
     } else if (pan) {
       setTransform(tr => ({ ...tr, x: pan.tx + (e.clientX - pan.ox), y: pan.ty + (e.clientY - pan.oy) }));
+    } else if (boxSel) {
+      setBoxSel(b => b ? { ...b, cx: e.clientX, cy: e.clientY } : null);
     }
   };
 
-  const onMouseUp = () => { setDrag(null); setPan(null); if (liveEdge) setLiveEdge(null); };
+  const onMouseUp = () => {
+    if (boxSel) {
+      const dragged = Math.abs(boxSel.cx - boxSel.sx) > 3 || Math.abs(boxSel.cy - boxSel.sy) > 3;
+      if (dragged && svgRef.current) {
+        const rect = svgRef.current.getBoundingClientRect();
+        const x1 = Math.min(boxSel.sx, boxSel.cx) - rect.left;
+        const y1 = Math.min(boxSel.sy, boxSel.cy) - rect.top;
+        const x2 = Math.max(boxSel.sx, boxSel.cx) - rect.left;
+        const y2 = Math.max(boxSel.sy, boxSel.cy) - rect.top;
+        // Box edges → canvas coords
+        const cx1 = (x1 - transform.x) / transform.scale;
+        const cy1 = (y1 - transform.y) / transform.scale;
+        const cx2 = (x2 - transform.x) / transform.scale;
+        const cy2 = (y2 - transform.y) / transform.scale;
+        const hits = new Set<string>(boxSel.additive ? selectedSet : []);
+        for (const n of model.nodes) {
+          const nx = n.x ?? 0, ny = n.y ?? 0;
+          const nw = variant === 'question' ? questionNodeW(n) : nodeWidth(n.label);
+          const nh = variant === 'question' ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
+          if (nx + nw >= cx1 && nx <= cx2 && ny + nh >= cy1 && ny <= cy2) hits.add(n.id);
+        }
+        const arr = Array.from(hits);
+        setSelectedSet(hits);
+        setSelected(arr.length ? arr[arr.length - 1] : null);
+      }
+      setBoxSel(null);
+    }
+    // Commit drag position to history so it can be undone.
+    if (drag) applyAndPush(model);
+    groupDragOriginsRef.current = null;
+    setDrag(null); setPan(null);
+    if (liveEdge) setLiveEdge(null);
+  };
 
   const onNodeDblClick = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -415,18 +597,35 @@ function FlowchartEditor({
     const label = variant === 'question' ? 'New Question' : variant === 'journey' ? `Step ${model.nodes.length + 1}` : 'New Step';
     const metadata = variant === 'question' ? { answers: [] } : undefined;
     const updated = { ...model, nodes: [...model.nodes, { id, label, shape: 'rectangle' as const, metadata, ...p }] };
-    applyAndPush(updated); setSelected(id);
+    applyAndPush(updated); selectOne(id);
     setAnnouncement(`Added ${variantLabel.toLowerCase()} "${label}".`);
   };
 
   const deleteNode = (nodeId: string) => {
     const node = model.nodes.find(n => n.id === nodeId);
     const updated = { ...model, nodes: model.nodes.filter(n => n.id !== nodeId), edges: model.edges.filter(e => e.from !== nodeId && e.to !== nodeId) };
-    applyAndPush(updated); if (selected === nodeId) setSelected(null);
+    applyAndPush(updated);
+    if (selectedSet.has(nodeId)) {
+      const next = new Set(selectedSet); next.delete(nodeId);
+      setSelectedSet(next);
+      if (selected === nodeId) setSelected(next.size ? Array.from(next)[next.size - 1] : null);
+    }
     if (node) setAnnouncement(`Deleted ${variantLabel.toLowerCase()} "${node.label}".`);
   };
 
-  const deleteSelected = () => { if (selected) deleteNode(selected); };
+  const deleteSelected = () => {
+    if (selectedSet.size === 0) return;
+    if (selectedSet.size === 1 && selected) { deleteNode(selected); return; }
+    const ids = new Set(selectedSet);
+    const updated = {
+      ...model,
+      nodes: model.nodes.filter(n => !ids.has(n.id)),
+      edges: model.edges.filter(ed => !ids.has(ed.from) && !ids.has(ed.to)),
+    };
+    applyAndPush(updated);
+    clearSelection();
+    setAnnouncement(`Deleted ${ids.size} ${variantLabel.toLowerCase()}s.`);
+  };
 
   const beginEditEdge = (edgeId: string) => {
     const edge = model.edges.find(e => e.id === edgeId);
@@ -512,10 +711,12 @@ function FlowchartEditor({
       {/* Controls bar */}
       <div style={{ display: 'flex', gap: 6, padding: '7px 14px', background: t.ctrlsBg, borderBottom: `1px solid ${t.ctrlsBorder}`, alignItems: 'center', flexWrap: 'wrap' }}>
         <button onClick={() => addNode()} style={ctrlBtn(acc.color, isDark)}>+ {variantLabel}</button>
-        {selected && (
+        {selectedSet.size > 0 && (
           <>
             <div style={{ width: 1, height: 20, background: t.ctrlsBorder, margin: '0 2px' }} />
-            <button onClick={deleteSelected} style={{ ...ctrlBtn('transparent', isDark), color: '#ef4444', border: `1px solid ${isDark ? '#7f1d1d' : '#fca5a5'}` }}>Delete</button>
+            <button onClick={deleteSelected} style={{ ...ctrlBtn('transparent', isDark), color: '#ef4444', border: `1px solid ${isDark ? '#7f1d1d' : '#fca5a5'}` }}>
+              {selectedSet.size > 1 ? `Delete (${selectedSet.size})` : 'Delete'}
+            </button>
           </>
         )}
         {liveEdge && (
@@ -613,13 +814,14 @@ function FlowchartEditor({
                 const isQuestion = variant === 'question';
                 const nW = isQuestion ? questionNodeW(node) : nodeWidth(node.label);
                 const nH = isQuestion ? questionNodeH((node.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
+                const isSelected = selectedSet.has(node.id);
 
                 return (
                   <g
                     key={node.id}
                     transform={`translate(${node.x ?? 0},${node.y ?? 0})`}
                     role="button"
-                    aria-label={`${variantLabel} ${variant === 'journey' ? idx + 1 + ': ' : ''}${node.label}${selected === node.id ? ', selected' : ''}`}
+                    aria-label={`${variantLabel} ${variant === 'journey' ? idx + 1 + ': ' : ''}${node.label}${isSelected ? ', selected' : ''}`}
                     style={{ cursor: drag?.nodeId === node.id ? 'grabbing' : 'grab' }}
                     onMouseDown={e => onNodeMouseDown(e, node.id)}
                     onMouseUp={e => onNodeMouseUp(e, node.id)}
@@ -630,10 +832,10 @@ function FlowchartEditor({
                   >
                     <title>{`${variantLabel}: ${node.label}`}</title>
                     {isQuestion ? (
-                      <QuestionNode node={node} selected={selected === node.id} edges={model.edges} isDark={isDark} onAnswerPortDown={onAnswerPortDown} qW={nW} />
+                      <QuestionNode node={node} selected={isSelected} edges={model.edges} isDark={isDark} onAnswerPortDown={onAnswerPortDown} qW={nW} />
                     ) : (
                       <>
-                        <NodeShape node={node} selected={selected === node.id} variant={variant} stepNumber={variant === 'journey' ? idx + 1 : undefined} t={t} isDark={isDark} w={nW} />
+                        <NodeShape node={node} selected={isSelected} variant={variant} stepNumber={variant === 'journey' ? idx + 1 : undefined} t={t} isDark={isDark} w={nW} />
                         {editingId === node.id ? (
                           <foreignObject x={6} y={6} width={nW - 12} height={NODE_H - 12}>
                             <input
@@ -647,7 +849,7 @@ function FlowchartEditor({
                             />
                           </foreignObject>
                         ) : (
-                          <text x={nW / 2} y={NODE_H / 2 + 5} textAnchor="middle" fontSize={13} fontWeight="500" fontFamily="ui-sans-serif,system-ui,sans-serif" fill={selected === node.id ? acc.color : t.textPrimary} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                          <text x={nW / 2} y={NODE_H / 2 + 5} textAnchor="middle" fontSize={13} fontWeight="500" fontFamily="ui-sans-serif,system-ui,sans-serif" fill={isSelected ? acc.color : t.textPrimary} style={{ pointerEvents: 'none', userSelect: 'none' }}>
                             {node.label}
                           </text>
                         )}
@@ -668,6 +870,24 @@ function FlowchartEditor({
               })}
             </g>
           </svg>
+
+          {boxSel && Math.abs(boxSel.cx - boxSel.sx) + Math.abs(boxSel.cy - boxSel.sy) > 4 && containerRef.current && (() => {
+            const rect = containerRef.current.getBoundingClientRect();
+            const left = Math.min(boxSel.sx, boxSel.cx) - rect.left;
+            const top = Math.min(boxSel.sy, boxSel.cy) - rect.top;
+            const w = Math.abs(boxSel.cx - boxSel.sx);
+            const h = Math.abs(boxSel.cy - boxSel.sy);
+            return (
+              <div
+                style={{
+                  position: 'absolute', left, top, width: w, height: h,
+                  border: `1px dashed ${acc.color}`,
+                  background: isDark ? 'rgba(99,102,241,0.10)' : 'rgba(99,102,241,0.08)',
+                  pointerEvents: 'none', borderRadius: 4,
+                }}
+              />
+            );
+          })()}
 
           {model.nodes.length === 0 && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', gap: 8 }}>
