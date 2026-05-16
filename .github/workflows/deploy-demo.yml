@@ -35,7 +35,7 @@ jobs:
 
       - name: Install demo dependencies
         working-directory: demo
-        run: bun install
+        run: bun install --no-save
 
       - name: Build demo
         working-directory: demo
