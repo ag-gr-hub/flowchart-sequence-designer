@@ -11,9 +11,9 @@ import { fromJSON } from '../importers/json.js';
 
 const NODE_W = 152;
 const NODE_H = 48;
-const Q_W = 192;
-const Q_BASE_H = 52;
-const Q_ANS_H = 30;
+const Q_W = 240;
+const Q_BASE_H = 68;  // question header height
+const Q_ANS_H = 54;   // per-answer row height (card + port zone)
 const GRID = 24;
 
 // ── Theme ──────────────────────────────────────────────────────────────────
@@ -183,6 +183,8 @@ function NodeShape({ node, selected, variant, stepNumber, t, isDark }: {
 }
 
 // ── Question node ──────────────────────────────────────────────────────────
+const ANSWER_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
 function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown }: {
   node: DiagramNode; selected: boolean; edges: DiagramEdge[];
   isDark: boolean;
@@ -190,75 +192,138 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown }: {
 }) {
   const answers: string[] = (node.metadata?.answers as string[] | undefined) ?? [];
   const totalH = questionNodeH(answers);
-  const amberColor = isDark ? C.amberDark : C.amber;
-  const amberBorder = isDark ? C.amberDarkBorder : C.amberBorder;
-  const amberFill = isDark ? C.amberDarkLight : C.amberLight;
-  const nodeFill = isDark ? (selected ? 'rgba(251,191,36,0.08)' : '#1e293b') : (selected ? C.amberLight : '#fffdf7');
-  const stroke = selected ? amberColor : amberBorder;
-  const sw = selected ? 2 : 1.5;
-  const textColor = isDark ? '#f1f5f9' : '#1e293b';
-  const pillFill = isDark ? '#0f172a' : '#fff';
+  const amber = isDark ? C.amberDark : C.amber;
+  const amberSoft = isDark ? 'rgba(251,191,36,0.14)' : '#fef9ee';
+  const amberMid = isDark ? 'rgba(251,191,36,0.22)' : '#fef3c7';
+  const amberLine = isDark ? 'rgba(251,191,36,0.18)' : '#fde68a';
+  const nodeBg = isDark ? '#1e293b' : '#ffffff';
+  const nodeBorder = selected ? amber : (isDark ? 'rgba(251,191,36,0.25)' : '#fde68a');
+  const cardBg = isDark ? '#0f172a' : '#fffdf7';
+  const cardBgConnected = isDark ? 'rgba(251,191,36,0.12)' : '#fef3c7';
+  const cardBorder = isDark ? '#1e293b' : '#fde68a';
+  const textMain = isDark ? '#f1f5f9' : '#1e293b';
+  const textSub = isDark ? '#64748b' : '#94a3b8';
+  const textAns = isDark ? '#cbd5e1' : '#374151';
 
+  // Glow ring when selected
   const glow = selected && (
-    <g style={{ filter: 'blur(8px)' }}>
-      <rect x={-6} y={-6} width={Q_W + 12} height={totalH + 12} rx={16} fill={C.amberGlow} />
+    <g style={{ filter: 'blur(10px)' }}>
+      <rect x={-8} y={-8} width={Q_W + 16} height={totalH + 16} rx={18} fill={isDark ? 'rgba(251,191,36,0.18)' : 'rgba(251,191,36,0.25)'} />
     </g>
   );
+
+  // Header height uses Q_BASE_H; clip question text if long
+  const labelText = node.label.length > 28 ? node.label.slice(0, 26) + '…' : node.label;
+  const labelLine2 = node.label.length > 14
+    ? [node.label.slice(0, 20), node.label.slice(20, 40)].filter(Boolean)
+    : [node.label];
 
   return (
     <>
       {glow}
-      <rect width={Q_W} height={totalH} rx={12} fill={nodeFill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />
-      <circle cx={Q_W - 14} cy={16} r={11} fill={amberColor} />
-      <text x={Q_W - 14} y={20} textAnchor="middle" fontSize={12} fontWeight="800" fill="white" style={{ pointerEvents: 'none', userSelect: 'none' }}>?</text>
-      <text
-        x={Q_W / 2 - 8} y={Q_BASE_H / 2 + 5}
-        textAnchor="middle" fontSize={13} fontWeight="600"
-        fontFamily="ui-sans-serif,system-ui,sans-serif"
-        fill={selected ? amberColor : textColor}
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
-      >
-        {node.label}
+
+      {/* Card body */}
+      <rect width={Q_W} height={totalH} rx={14} fill={nodeBg} stroke={nodeBorder} strokeWidth={selected ? 2 : 1.5} filter="url(#nodeShadow)" />
+
+      {/* Header tinted zone */}
+      <clipPath id={`qhdr-${node.id}`}>
+        <rect width={Q_W} height={Q_BASE_H} rx={14} />
+      </clipPath>
+      <rect width={Q_W} height={Q_BASE_H} fill={amberSoft} clipPath={`url(#qhdr-${node.id})`} />
+
+      {/* Amber left accent bar */}
+      <rect x={0} y={0} width={4} height={Q_BASE_H} rx={2} fill={amber} />
+
+      {/* "?" badge */}
+      <rect x={12} y={14} width={28} height={28} rx={8} fill={amber} />
+      <text x={26} y={33} textAnchor="middle" fontSize={15} fontWeight="900" fill="white" style={{ pointerEvents: 'none', userSelect: 'none' }}>?</text>
+
+      {/* Question label */}
+      <text style={{ pointerEvents: 'none', userSelect: 'none' }}
+        fontFamily="ui-sans-serif,system-ui,sans-serif">
+        <tspan x={50} y={27} fontSize={9} fontWeight={700} fill={textSub} letterSpacing={0.6} textAnchor="start">QUESTION</tspan>
+        <tspan x={50} dy={15} fontSize={13} fontWeight={700} fill={selected ? amber : textMain} textAnchor="start">
+          {node.label.length > 22 ? node.label.slice(0, 20) + '…' : node.label}
+        </tspan>
       </text>
-      <line x1={10} y1={Q_BASE_H} x2={Q_W - 10} y2={Q_BASE_H} stroke={amberBorder} strokeWidth={1} />
+
+      {/* Divider */}
+      <line x1={0} y1={Q_BASE_H} x2={Q_W} y2={Q_BASE_H} stroke={amberLine} strokeWidth={1} />
+
+      {/* Empty state */}
       {answers.length === 0 && (
-        <text x={Q_W / 2} y={Q_BASE_H + Q_ANS_H / 2 + 5} textAnchor="middle" fontSize={11} fill={amberColor} opacity={0.5} style={{ pointerEvents: 'none', userSelect: 'none' }}>
-          Add answers in panel →
-        </text>
+        <>
+          <text x={Q_W / 2} y={Q_BASE_H + 22} textAnchor="middle" fontSize={10} fill={amber} opacity={0.4} fontWeight={600} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+            No answers yet
+          </text>
+          <text x={Q_W / 2} y={Q_BASE_H + 36} textAnchor="middle" fontSize={9} fill={textSub} opacity={0.7} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+            Open panel → Add Answer
+          </text>
+        </>
       )}
+
+      {/* Answer rows */}
       {answers.map((ans, i) => {
         const rowY = Q_BASE_H + i * Q_ANS_H;
-        const midY = rowY + Q_ANS_H / 2;
+        // Answer card occupies top 38px of the 54px band; port in the remaining 16px
+        const cardY = rowY + 5;
+        const cardH = 38;
+        const cardMidY = cardY + cardH / 2;
+        const portCY = rowY + Q_ANS_H - 7;
         const connected = edges.some(e => e.from === node.id && e.label === ans);
-        // Port sits at the BOTTOM of each answer row
-        const pillX = 10;
-        const pillW = Q_W - 46;
-        const portX = Q_W / 2;
-        const portY = rowY + Q_ANS_H - 2; // bottom of the row
+        const letter = i < 26 ? ANSWER_LETTERS[i] : `${i + 1}`;
+        const targetNode = connected
+          ? edges.filter(e => e.from === node.id && e.label === ans).map(e => e.to)[0]
+          : null;
+
         return (
           <g key={ans + i}>
-            {/* Answer pill */}
-            <rect x={pillX} y={rowY + 5} width={pillW} height={Q_ANS_H - 16} rx={999}
-              fill={connected ? amberColor : pillFill} stroke={amberBorder} strokeWidth={1} />
-            <text
-              x={pillX + pillW / 2} y={midY + 1}
-              textAnchor="middle" fontSize={11} fontWeight="500"
-              fill={connected ? '#fff' : (isDark ? '#94a3b8' : '#475569')}
-              style={{ pointerEvents: 'none', userSelect: 'none' }}
-            >
-              {ans.length > 18 ? ans.slice(0, 16) + '…' : ans}
+            {/* Row separator */}
+            {i > 0 && <line x1={8} y1={rowY} x2={Q_W - 8} y2={rowY} stroke={amberLine} strokeWidth={0.5} />}
+
+            {/* Answer card */}
+            <rect x={8} y={cardY} width={Q_W - 16} height={cardH} rx={8}
+              fill={connected ? cardBgConnected : cardBg}
+              stroke={connected ? amberLine : cardBorder} strokeWidth={1} />
+
+            {/* Letter badge */}
+            <rect x={14} y={cardY + 8} width={22} height={22} rx={6}
+              fill={connected ? amber : (isDark ? '#1e293b' : '#fef3c7')} />
+            <text x={25} y={cardY + 23} textAnchor="middle" fontSize={10} fontWeight={800}
+              fill={connected ? '#fff' : amber}
+              style={{ pointerEvents: 'none', userSelect: 'none' }}>
+              {letter}
             </text>
-            {/* Port dot — bottom center of row */}
+
+            {/* Answer text */}
+            <text x={44} y={cardMidY + 5} fontSize={12} fontWeight={500}
+              fill={connected ? (isDark ? '#fef3c7' : '#92400e') : textAns}
+              fontFamily="ui-sans-serif,system-ui,sans-serif"
+              style={{ pointerEvents: 'none', userSelect: 'none' }}>
+              {ans.length > 17 ? ans.slice(0, 15) + '…' : ans}
+            </text>
+
+            {/* Connection label */}
+            {connected && targetNode && (
+              <text x={Q_W - 10} y={cardMidY - 1} textAnchor="end" fontSize={9} fill={amber} fontWeight={600}
+                style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                → connected
+              </text>
+            )}
+
+            {/* Port nub — bottom center */}
             <circle
-              cx={portX} cy={portY} r={6}
-              fill={connected ? amberColor : pillFill}
-              stroke={amberColor} strokeWidth={1.5}
-              style={{ cursor: 'crosshair', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' }}
-              onMouseDown={e => onAnswerPortDown(e, node.id, ans, portY)}
+              cx={Q_W / 2} cy={portCY} r={7}
+              fill={connected ? amber : (isDark ? '#0f172a' : '#fff')}
+              stroke={amber} strokeWidth={1.5}
+              style={{ cursor: 'crosshair', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.18))' }}
+              onMouseDown={e => onAnswerPortDown(e, node.id, ans, portCY)}
             />
-            <text x={portX} y={portY + 4} textAnchor="middle" fontSize={8}
-              fill={connected ? '#fff' : amberColor}
-              style={{ pointerEvents: 'none', userSelect: 'none' }}>↓</text>
+            <path
+              d={`M ${Q_W / 2 - 3} ${portCY - 2} L ${Q_W / 2} ${portCY + 2} L ${Q_W / 2 + 3} ${portCY - 2}`}
+              fill="none" stroke={connected ? '#fff' : amber} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
+              style={{ pointerEvents: 'none' }}
+            />
           </g>
         );
       })}
@@ -282,9 +347,9 @@ function EdgeLine({ edge, nodes, variant, t, isDark }: {
     const answers: string[] = (from.metadata?.answers as string[] | undefined) ?? [];
     const idx = answers.indexOf(edge.label ?? '');
     if (idx >= 0) {
-      // Port exits from the bottom of each answer row
+      // Port exits from the bottom nub of each answer row
       x1 = (from.x ?? 0) + Q_W / 2;
-      y1 = (from.y ?? 0) + Q_BASE_H + idx * Q_ANS_H + Q_ANS_H - 2;
+      y1 = (from.y ?? 0) + Q_BASE_H + idx * Q_ANS_H + Q_ANS_H - 7;
       exitDir = 'bottom';
     } else {
       x1 = (from.x ?? 0) + Q_W / 2;
@@ -750,7 +815,6 @@ export function DiagramEditor({
     e.stopPropagation();
     const node = model.nodes.find(n => n.id === nodeId)!;
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    // Port is at the bottom of each answer row
     setLiveEdge({ fromId: nodeId, fromX: (node.x ?? 0) + Q_W / 2, fromY: (node.y ?? 0) + portYInNode, exitDir: 'bottom', answerLabel: answer, toX: x, toY: y });
   };
 
