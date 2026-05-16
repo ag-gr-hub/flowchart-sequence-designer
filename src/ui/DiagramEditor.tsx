@@ -230,34 +230,35 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown }: {
         const rowY = Q_BASE_H + i * Q_ANS_H;
         const midY = rowY + Q_ANS_H / 2;
         const connected = edges.some(e => e.from === node.id && e.label === ans);
-        // Port sits on the LEFT side; pill shifts right to make room
-        const portX = 14;
-        const pillX = 30;
-        const pillW = Q_W - pillX - 10;
+        // Port sits at the BOTTOM of each answer row
+        const pillX = 10;
+        const pillW = Q_W - 46;
+        const portX = Q_W / 2;
+        const portY = rowY + Q_ANS_H - 2; // bottom of the row
         return (
           <g key={ans + i}>
-            {/* Port dot — left side */}
-            <circle
-              cx={portX} cy={midY} r={7}
-              fill={connected ? amberColor : pillFill}
-              stroke={amberColor} strokeWidth={1.5}
-              style={{ cursor: 'crosshair', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' }}
-              onMouseDown={e => onAnswerPortDown(e, node.id, ans, midY)}
-            />
-            <text x={portX} y={midY + 4} textAnchor="middle" fontSize={9}
-              fill={connected ? '#fff' : amberColor}
-              style={{ pointerEvents: 'none', userSelect: 'none' }}>←</text>
             {/* Answer pill */}
-            <rect x={pillX} y={rowY + 5} width={pillW} height={Q_ANS_H - 10} rx={999}
+            <rect x={pillX} y={rowY + 5} width={pillW} height={Q_ANS_H - 16} rx={999}
               fill={connected ? amberColor : pillFill} stroke={amberBorder} strokeWidth={1} />
             <text
-              x={pillX + pillW / 2} y={midY + 4}
+              x={pillX + pillW / 2} y={midY + 1}
               textAnchor="middle" fontSize={11} fontWeight="500"
               fill={connected ? '#fff' : (isDark ? '#94a3b8' : '#475569')}
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >
-              {ans.length > 16 ? ans.slice(0, 14) + '…' : ans}
+              {ans.length > 18 ? ans.slice(0, 16) + '…' : ans}
             </text>
+            {/* Port dot — bottom center of row */}
+            <circle
+              cx={portX} cy={portY} r={6}
+              fill={connected ? amberColor : pillFill}
+              stroke={amberColor} strokeWidth={1.5}
+              style={{ cursor: 'crosshair', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' }}
+              onMouseDown={e => onAnswerPortDown(e, node.id, ans, portY)}
+            />
+            <text x={portX} y={portY + 4} textAnchor="middle" fontSize={8}
+              fill={connected ? '#fff' : amberColor}
+              style={{ pointerEvents: 'none', userSelect: 'none' }}>↓</text>
           </g>
         );
       })}
@@ -281,10 +282,10 @@ function EdgeLine({ edge, nodes, variant, t, isDark }: {
     const answers: string[] = (from.metadata?.answers as string[] | undefined) ?? [];
     const idx = answers.indexOf(edge.label ?? '');
     if (idx >= 0) {
-      // Port is on the LEFT side
-      x1 = from.x ?? 0;
-      y1 = (from.y ?? 0) + Q_BASE_H + idx * Q_ANS_H + Q_ANS_H / 2;
-      exitDir = 'left';
+      // Port exits from the bottom of each answer row
+      x1 = (from.x ?? 0) + Q_W / 2;
+      y1 = (from.y ?? 0) + Q_BASE_H + idx * Q_ANS_H + Q_ANS_H - 2;
+      exitDir = 'bottom';
     } else {
       x1 = (from.x ?? 0) + Q_W / 2;
       y1 = (from.y ?? 0) + questionNodeH(answers);
@@ -575,8 +576,8 @@ export function DiagramEditor({
     e.stopPropagation();
     const node = model.nodes.find(n => n.id === nodeId)!;
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    // Port is on the LEFT side now
-    setLiveEdge({ fromId: nodeId, fromX: node.x ?? 0, fromY: (node.y ?? 0) + portYInNode, exitDir: 'left', answerLabel: answer, toX: x, toY: y });
+    // Port is at the bottom of each answer row
+    setLiveEdge({ fromId: nodeId, fromX: (node.x ?? 0) + Q_W / 2, fromY: (node.y ?? 0) + portYInNode, exitDir: 'bottom', answerLabel: answer, toX: x, toY: y });
   };
 
   const onNodeMouseDown = (e: React.MouseEvent, id: string) => {
