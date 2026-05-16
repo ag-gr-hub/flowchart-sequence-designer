@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Toolbar } from './Toolbar.js';
 import { StepEditor } from './StepEditor.js';
+import { SequenceEditor } from './SequenceEditor.js';
 import type { DiagramModel, DiagramNode, DiagramEdge, ExportFormat, DiagramVariant } from '../core/types.js';
 import { toMermaid } from '../exporters/mermaid.js';
 import { toPlantUML } from '../exporters/plantuml.js';
@@ -758,7 +759,23 @@ interface CtxMenu {
   edgeId?: string | null;           // set = edge right-click
 }
 
-export function DiagramEditor({
+export function DiagramEditor(props: DiagramEditorProps) {
+  // Delegate sequence diagrams to the dedicated SequenceEditor.
+  if (props.initialModel?.type === 'sequence') {
+    return <SequenceEditor
+      initialModel={props.initialModel}
+      onChange={props.onChange}
+      onExport={props.onExport}
+      height={props.height}
+      allowedExports={props.allowedExports}
+      allowImport={props.allowImport}
+      theme={props.theme}
+    />;
+  }
+  return <FlowchartEditor {...props} />;
+}
+
+function FlowchartEditor({
   initialModel, onChange, onExport, height = 600,
   allowedExports, allowImport = true, variant = 'flowchart', theme = 'auto',
 }: DiagramEditorProps) {
