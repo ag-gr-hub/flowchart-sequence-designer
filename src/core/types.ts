@@ -1,4 +1,5 @@
 export type DiagramType = 'flowchart' | 'sequence';
+export type DiagramVariant = 'flowchart' | 'question' | 'journey';
 export type NodeShape = 'rectangle' | 'diamond' | 'circle' | 'parallelogram';
 export type ExportFormat = 'mermaid' | 'plantuml' | 'json' | 'svg' | 'png';
 

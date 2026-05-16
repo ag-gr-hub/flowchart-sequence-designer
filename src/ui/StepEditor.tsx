@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { DiagramModel, DiagramNode, DiagramEdge, NodeShape } from '../core/types.js';
+import type { DiagramModel, DiagramNode, DiagramEdge, NodeShape, DiagramVariant } from '../core/types.js';
 
 interface StepEditorProps {
   nodeId: string;
   model: DiagramModel;
   onModelChange: (model: DiagramModel) => void;
+  variant?: DiagramVariant;
 }
 
 const SHAPES: { key: NodeShape; label: string; icon: string }[] = [
@@ -32,7 +33,14 @@ const C = {
 let _edgeSeq = 200;
 let _nodeSeq = 200;
 
-export function StepEditor({ nodeId, model, onModelChange }: StepEditorProps) {
+export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart' }: StepEditorProps) {
+  const isQuestion = variant === 'question';
+  const branchTerm = isQuestion ? 'Answer' : 'Branch';
+  const branchesLabel = isQuestion ? 'Answers' : 'Branches';
+  const edgeLabelHint = isQuestion ? 'Answer text…' : 'Label this edge…';
+  const accentColor = variant === 'question' ? '#d97706' : variant === 'journey' ? '#059669' : '#4f46e5';
+  const accentLight = variant === 'question' ? '#fef3c7' : variant === 'journey' ? '#d1fae5' : '#e0e7ff';
+  const accentBorder = variant === 'question' ? '#fcd34d' : variant === 'journey' ? '#6ee7b7' : '#c7d2fe';
   const node = model.nodes.find(n => n.id === nodeId);
   const [label, setLabel] = useState(node?.label ?? '');
   const [addingBranch, setAddingBranch] = useState(false);
@@ -98,9 +106,9 @@ export function StepEditor({ nodeId, model, onModelChange }: StepEditorProps) {
   return (
     <div style={styles.panel}>
       {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.headerDot} />
-        <span>Step Editor</span>
+      <div style={{ ...styles.header, color: accentColor, borderBottomColor: accentBorder, background: accentLight }}>
+        <div style={{ ...styles.headerDot, background: accentColor }} />
+        <span>{isQuestion ? 'Question Editor' : variant === 'journey' ? 'Step Editor' : 'Step Editor'}</span>
       </div>
 
       <div style={styles.scrollArea}>
@@ -143,32 +151,33 @@ export function StepEditor({ nodeId, model, onModelChange }: StepEditorProps) {
           </div>
         </section>
 
+        {/* Shape — hidden for journey variant (all steps look the same) */}
         {/* Branches */}
         <section style={{ ...styles.section, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <label style={{ ...styles.fieldLabel, margin: 0 }}>Branches</label>
+            <label style={{ ...styles.fieldLabel, margin: 0 }}>{branchesLabel}</label>
             <span style={{ fontSize: 11, color: C.slate400, background: C.slate100, padding: '1px 7px', borderRadius: 99, fontWeight: 600 }}>
               {outEdges.length}
             </span>
           </div>
 
           {outEdges.length === 0 && !addingBranch && (
-            <div style={styles.emptyHint}>No outgoing branches yet</div>
+            <div style={styles.emptyHint}>{isQuestion ? 'No answers yet — add one below' : 'No outgoing connections yet'}</div>
           )}
 
           {outEdges.map(edge => {
             const target = model.nodes.find(n => n.id === edge.to);
             return (
               <div key={edge.id} style={styles.branchCard}>
-                <div style={styles.branchAccent} />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...styles.branchAccent, background: accentColor }} />
+                <div style={{ flex: 1, minWidth: 0, padding: '8px 8px 8px 0' }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: C.slate700, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     → {target?.label ?? edge.to}
                   </div>
                   <input
                     value={edge.label ?? ''}
                     onChange={e => updateEdgeLabel(edge.id, e.target.value)}
-                    placeholder="Label this edge…"
+                    placeholder={edgeLabelHint}
                     style={{ ...styles.input, fontSize: 11, padding: '4px 8px' }}
                   />
                 </div>
@@ -187,11 +196,11 @@ export function StepEditor({ nodeId, model, onModelChange }: StepEditorProps) {
                     onClick={() => setBranchMode(mode)}
                     style={{
                       flex: 1, padding: '5px 0', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 600,
-                      background: branchMode === mode ? C.indigo : C.slate200,
+                      background: branchMode === mode ? accentColor : C.slate200,
                       color: branchMode === mode ? '#fff' : C.slate600,
                     }}
                   >
-                    {mode === 'new' ? '+ New node' : 'Existing'}
+                    {mode === 'new' ? `+ New ${branchTerm.toLowerCase()}` : 'Existing step'}
                   </button>
                 ))}
               </div>
@@ -219,19 +228,19 @@ export function StepEditor({ nodeId, model, onModelChange }: StepEditorProps) {
               <input
                 value={branchEdgeLabel}
                 onChange={e => setBranchEdgeLabel(e.target.value)}
-                placeholder="Edge label (optional)"
+                placeholder={isQuestion ? 'Answer text (required)…' : 'Edge label (optional)'}
                 style={{ ...styles.input, marginBottom: 10 }}
               />
 
               <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={addBranch} style={styles.addBtn}>Add branch</button>
+                <button onClick={addBranch} style={{ ...styles.addBtn, background: accentColor }}>Add {branchTerm}</button>
                 <button onClick={() => setAddingBranch(false)} style={styles.cancelBtn}>Cancel</button>
               </div>
             </div>
           ) : (
-            <button onClick={() => setAddingBranch(true)} style={styles.addBranchTrigger}>
+            <button onClick={() => setAddingBranch(true)} style={{ ...styles.addBranchTrigger, color: accentColor, borderColor: accentBorder }}>
               <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
-              Add Branch
+              Add {branchTerm}
             </button>
           )}
         </section>
