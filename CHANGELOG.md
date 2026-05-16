@@ -13,6 +13,13 @@ Versioning: [Semantic Versioning](https://semver.org/).
   their brand without forking. `ThemeColors` and `SequenceThemeColors` are now
   exported from `flowchart-sequence-designer/ui`.
 
+### Changed
+- Internal refactor: the 1500-line `DiagramEditor.tsx` monolith is split into
+  focused modules (`layout.ts`, `theme.ts`, `render.tsx`, `NodeNavigator.tsx`,
+  `ContextMenu.tsx`, `hooks/useHistory.ts`, `hooks/useSystemTheme.ts`). No
+  public API or visual change — the file is now ~770 lines and the render
+  layer can be imported in isolation.
+
 ## [1.0.0] - 2026-05-16
 
 First stable release. The package is now published on npm and considered
