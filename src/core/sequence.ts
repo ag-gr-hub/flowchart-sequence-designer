@@ -19,6 +19,8 @@ export class SequenceBuilder {
   }
 
   message(from: string, to: string, label: string, options: Partial<Pick<SequenceMessage, 'style'>> = {}): this {
+    this.model.addActor(from);
+    this.model.addActor(to);
     this.model.addMessage({ id: `m${++_msgCounter}`, from, to, label, style: options.style ?? 'solid' });
     return this;
   }
