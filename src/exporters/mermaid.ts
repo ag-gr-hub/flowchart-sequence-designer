@@ -23,8 +23,8 @@ function formatNode(node: DiagramNode): string {
 function edgeArrow(edge: DiagramEdge): string {
   const style = edge.style ?? 'solid';
   const arrowhead = edge.arrowhead ?? 'arrow';
-  if (style === 'dashed') return arrowhead === 'none' ? '-.-' : '-.->';
-  if (style === 'dotted') return arrowhead === 'none' ? '~.~' : '~.~>';
+  // Mermaid flowcharts only have solid and dashed; dotted collapses to dashed.
+  if (style === 'dashed' || style === 'dotted') return arrowhead === 'none' ? '-.-' : '-.->';
   return arrowhead === 'none' ? '---' : '-->';
 }
 

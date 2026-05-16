@@ -31,9 +31,17 @@ export interface SequenceMessage {
 
 export interface DiagramModel {
   type: DiagramType;
+  /** UI variant — controls which editor specialization renders the model. */
+  variant?: DiagramVariant;
   title?: string;
   nodes: DiagramNode[];
   edges: DiagramEdge[];
   actors?: string[];
   messages?: SequenceMessage[];
+}
+
+export interface ValidationError {
+  kind: 'dangling-from' | 'dangling-to' | 'duplicate-node-id' | 'duplicate-edge-id';
+  id: string;
+  message: string;
 }
