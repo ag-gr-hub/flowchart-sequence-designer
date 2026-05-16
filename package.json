@@ -1,19 +1,30 @@
 {
   "name": "flowchart-sequence-designer",
   "version": "0.1.0",
-  "devDependencies": {
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "bun-types": "latest",
-    "react": "^18",
-    "react-dom": "^18",
-    "tsup": "^8",
-    "typescript": "^5"
+  "description": "TypeScript library for building and editing flowcharts and sequence diagrams — programmatic API, React UI, and multi-format export (Mermaid, PlantUML, SVG, PNG, JSON).",
+  "license": "MIT",
+  "author": "ag-gr-hub",
+  "homepage": "https://ag-gr-hub.github.io/flowchart-sequence-designer/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ag-gr-hub/flowchart-sequence-designer.git"
   },
-  "peerDependencies": {
-    "react": ">=18",
-    "react-dom": ">=18"
+  "bugs": {
+    "url": "https://github.com/ag-gr-hub/flowchart-sequence-designer/issues"
   },
+  "keywords": [
+    "flowchart",
+    "sequence-diagram",
+    "mermaid",
+    "plantuml",
+    "diagram",
+    "react",
+    "svg",
+    "editor",
+    "typescript"
+  ],
+  "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -26,33 +37,37 @@
       "require": "./dist/ui/index.cjs"
     }
   },
-  "description": "TypeScript library for building and editing flowcharts and sequence diagrams — programmatic API, React UI, and multi-format export (Mermaid, PlantUML, SVG, PNG, JSON).",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
-  "keywords": [
-    "flowchart",
-    "sequence-diagram",
-    "mermaid",
-    "plantuml",
-    "diagram",
-    "react"
-  ],
-  "license": "MIT",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
   "peerDependenciesMeta": {
     "react": {
-    "optional": true
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
-  "react-dom": {
-  "optional": true
-}
-},
-"scripts": {
-  "build": "tsup",
-  "dev": "tsup --watch",
-  "test": "bun test",
-  "typecheck": "tsc --noEmit"
-},
-"type": "module"
+  "devDependencies": {
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "bun-types": "latest",
+    "react": "^18",
+    "react-dom": "^18",
+    "tsup": "^8",
+    "typescript": "^5"
+  }
 }
