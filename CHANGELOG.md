@@ -25,6 +25,12 @@ Versioning: [Semantic Versioning](https://semver.org/).
   indigo guide lines appear whenever its left/center/right or top/middle/
   bottom edge lines up with another node, and the position snaps within a
   4-pixel threshold. Group drags preserve relative offsets and skip the snap.
+- Edge waypoint rerouting. Hover an edge to reveal a handle at its midpoint;
+  drag it to set a manual routing waypoint and the edge re-renders as two
+  smooth bezier segments through that point. `DiagramEdge.waypoint` is
+  persisted in JSON exports and ignored by the Mermaid / PlantUML serializers
+  (those formats don't encode routing). Right-click an edge → "Reset routing"
+  to clear the waypoint.
 
 ### Changed
 - Internal refactor: the 1500-line `DiagramEditor.tsx` monolith is split into

@@ -95,6 +95,7 @@ function FlowchartEditor({
   const [boxSel, setBoxSel] = useState<{ sx: number; sy: number; cx: number; cy: number; additive: boolean } | null>(null);
   const [liveEdge, setLiveEdge] = useState<LiveEdge | null>(null);
   const [alignGuides, setAlignGuides] = useState<{ x?: AlignGuideV; y?: AlignGuideH } | null>(null);
+  const [waypointDrag, setWaypointDrag] = useState<string | null>(null);
   const groupDragOriginsRef = useRef<Map<string, { ox: number; oy: number }> | null>(null);
   const clipboardRef = useRef<{ nodes: DiagramNode[]; edges: DiagramEdge[] } | null>(null);
 
@@ -515,6 +516,16 @@ function FlowchartEditor({
       setLiveEdge(le => le ? { ...le, toX: x, toY: y } : null);
       return;
     }
+    if (waypointDrag) {
+      const { x, y } = toCanvas(e.clientX, e.clientY);
+      const wx = snap(x), wy = snap(y);
+      const updated = {
+        ...model,
+        edges: model.edges.map(ed => ed.id === waypointDrag ? { ...ed, waypoint: { x: wx, y: wy } } : ed),
+      };
+      applyModel(updated);
+      return;
+    }
     if (drag) {
       const dx = snap((e.clientX - drag.ox - transform.x) / transform.scale);
       const dy = snap((e.clientY - drag.oy - transform.y) / transform.scale);
@@ -586,6 +597,7 @@ function FlowchartEditor({
     }
     // Commit drag position to history so it can be undone.
     if (drag) applyAndPush(model);
+    if (waypointDrag) { applyAndPush(model); setWaypointDrag(null); }
     groupDragOriginsRef.current = null;
     setAlignGuides(null);
     setDrag(null); setPan(null);
@@ -683,6 +695,19 @@ function FlowchartEditor({
 
   const deleteEdge = (edgeId: string) => {
     const updated = { ...model, edges: model.edges.filter(e => e.id !== edgeId) };
+    applyAndPush(updated);
+  };
+
+  const resetEdgeRouting = (edgeId: string) => {
+    const updated = {
+      ...model,
+      edges: model.edges.map(e => {
+        if (e.id !== edgeId) return e;
+        const { waypoint: _ignored, ...rest } = e;
+        void _ignored;
+        return rest;
+      }),
+    };
     applyAndPush(updated);
   };
 
@@ -817,6 +842,7 @@ function FlowchartEditor({
                   onEditCancel={() => setEditingEdgeId(null)}
                   onDoubleClick={beginEditEdge}
                   onContextMenu={onEdgeContextMenu}
+                  onWaypointDown={(ev, edgeId) => setWaypointDrag(edgeId)}
                 />
               ))}
 
@@ -985,10 +1011,12 @@ function FlowchartEditor({
               }}
               currentEdgeStyle={ctxEdge?.style ?? 'solid'}
               currentEdgeArrow={ctxEdge?.arrowhead ?? 'arrow'}
+              edgeHasWaypoint={!!ctxEdge?.waypoint}
               onEdgeRename={() => { if (ctxMenu.edgeId) { beginEditEdge(ctxMenu.edgeId); setCtxMenu(null); } }}
               onEdgeStyle={(s) => { if (ctxMenu.edgeId) { setEdgeStyle(ctxMenu.edgeId, s); setCtxMenu(null); } }}
               onEdgeArrowhead={(a) => { if (ctxMenu.edgeId) { setEdgeArrowhead(ctxMenu.edgeId, a); setCtxMenu(null); } }}
               onEdgeDelete={() => { if (ctxMenu.edgeId) { deleteEdge(ctxMenu.edgeId); setCtxMenu(null); } }}
+              onEdgeResetRouting={() => { if (ctxMenu.edgeId) { resetEdgeRouting(ctxMenu.edgeId); setCtxMenu(null); } }}
               containerRef={containerRef}
             />;
           })()}

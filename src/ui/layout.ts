@@ -81,3 +81,38 @@ export function bezierPath(
   const curve = Math.max(36, Math.min(220, base));
   return `M ${x1} ${y1} C ${x1} ${y1 + curve}, ${x2} ${y2 - curve}, ${x2} ${y2}`;
 }
+
+/**
+ * Two-segment cubic path that passes through `(wx, wy)` as a hard waypoint.
+ * Each segment uses the same vertical-pull logic as `bezierPath`. The result
+ * is one continuous path command: `M src C ... wx wy C ... dst`.
+ */
+export function bezierPathVia(
+  x1: number,
+  y1: number,
+  wx: number,
+  wy: number,
+  x2: number,
+  y2: number,
+): string {
+  const seg1 = bezierPath(x1, y1, wx, wy, 'bottom');
+  const seg2 = bezierPath(wx, wy, x2, y2, 'bottom');
+  // seg2 starts with `M wx wy ` — strip it so the path continues from
+  // the end of seg1 (which is already at `wx, wy`).
+  const seg2NoM = seg2.replace(/^M\s+-?[\d.]+\s+-?[\d.]+\s+/, '');
+  return seg1 + ' ' + seg2NoM;
+}
+
+/** Approximate midpoint of the cubic path produced by `bezierPath`. */
+export function bezierMidpoint(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): { x: number; y: number } {
+  // The cubic uses control points (x1, y1+curve) and (x2, y2-curve). At t=0.5
+  // a cubic bezier evaluates to (P0+3P1+3P2+P3)/8. So Y is:
+  //   (y1 + 3(y1+curve) + 3(y2-curve) + y2) / 8 = (4y1 + 4y2) / 8 = (y1+y2)/2
+  // X collapses similarly since both control points share the endpoint X.
+  return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+}
