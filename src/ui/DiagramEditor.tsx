@@ -12,8 +12,9 @@ import { fromJSON } from '../importers/json.js';
 // Fixed heights; widths are dynamic per-node
 const NODE_H = 48;
 const Q_BASE_H = 68;
-const Q_ANS_H = 54;
+const Q_ANS_ROW_H = 80; // height of the entire answer section (all cards in one row)
 const GRID = 24;
+const Q_CARD_PAD = 8;   // gap between answer cards and side padding
 
 // Width bounds
 const MIN_NODE_W = 120;
@@ -31,14 +32,21 @@ function nodeWidth(label: string): number {
   return Math.min(MAX_NODE_W, Math.max(MIN_NODE_W, Math.ceil(estimateTextW(label) + 48)));
 }
 
-/** Dynamic width for question nodes — driven by header label + longest answer. */
+/** Width of a single answer card based on its text content. */
+function answerCardW(ans: string): number {
+  // centered badge (22px) + centered text + horizontal padding
+  return Math.max(86, Math.ceil(Math.max(estimateTextW(ans, 7.5) + 20, 56) + 32));
+}
+
+/** Dynamic width for question nodes — header vs. sum of side-by-side answer cards. */
 function questionNodeW(node: DiagramNode): number {
   const answers = (node.metadata?.answers as string[] | undefined) ?? [];
-  // Header: badge (48px) + label text + right padding
   const headerW = estimateTextW(node.label, 8) + 80;
-  // Answer row: letter badge (44px) + answer text + padding
-  const maxAnsW = answers.reduce((m, a) => Math.max(m, estimateTextW(a, 7.5) + 90), 0);
-  return Math.min(MAX_Q_W, Math.max(MIN_Q_W, Math.ceil(Math.max(headerW, maxAnsW))));
+  if (answers.length === 0) return Math.max(MIN_Q_W, Math.ceil(headerW));
+  // cards sit side-by-side: total = sum(cardW) + gaps + side padding
+  const cardsW = answers.reduce((s, a) => s + answerCardW(a), 0)
+    + (answers.length - 1) * Q_CARD_PAD + 2 * Q_CARD_PAD;
+  return Math.max(MIN_Q_W, Math.ceil(Math.max(headerW, cardsW)));
 }
 
 // ── Theme ──────────────────────────────────────────────────────────────────
@@ -129,7 +137,7 @@ export interface DiagramEditorProps {
 function snap(v: number) { return Math.round(v / GRID) * GRID; }
 
 function questionNodeH(answers: string[]): number {
-  return Q_BASE_H + Math.max(1, answers.length) * Q_ANS_H;
+  return Q_BASE_H + (answers.length === 0 ? 48 : Q_ANS_ROW_H);
 }
 
 function bezierPath(x1: number, y1: number, x2: number, y2: number, exitDir: 'bottom' | 'right' | 'left' = 'bottom'): string {
@@ -213,13 +221,12 @@ const ANSWER_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, qW }: {
   node: DiagramNode; selected: boolean; edges: DiagramEdge[];
   isDark: boolean; qW: number;
-  onAnswerPortDown: (e: React.MouseEvent, nodeId: string, answer: string, portY: number) => void;
+  onAnswerPortDown: (e: React.MouseEvent, nodeId: string, answer: string, portX: number, portY: number) => void;
 }) {
   const answers: string[] = (node.metadata?.answers as string[] | undefined) ?? [];
   const totalH = questionNodeH(answers);
   const amber = isDark ? C.amberDark : C.amber;
   const amberSoft = isDark ? 'rgba(251,191,36,0.14)' : '#fef9ee';
-  const amberMid = isDark ? 'rgba(251,191,36,0.22)' : '#fef3c7';
   const amberLine = isDark ? 'rgba(251,191,36,0.18)' : '#fde68a';
   const nodeBg = isDark ? '#1e293b' : '#ffffff';
   const nodeBorder = selected ? amber : (isDark ? 'rgba(251,191,36,0.25)' : '#fde68a');
@@ -230,8 +237,8 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, qW }: {
   const textSub = isDark ? '#64748b' : '#94a3b8';
   const textAns = isDark ? '#cbd5e1' : '#374151';
 
-  // Max chars for answer text before truncation: based on available space
-  const maxAnsChars = Math.floor((qW - 90) / 7.5);
+  // Port row y (bottom of answer section, shared by all cards)
+  const portRowY = Q_BASE_H + Q_ANS_ROW_H - 8;
 
   // Glow ring when selected
   const glow = selected && (
@@ -284,65 +291,53 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, qW }: {
         </>
       )}
 
-      {/* Answer rows */}
+      {/* Answer cards — side by side in one row */}
       {answers.map((ans, i) => {
-        const rowY = Q_BASE_H + i * Q_ANS_H;
-        const cardY = rowY + 5;
-        const cardH = 38;
-        const cardMidY = cardY + cardH / 2;
-        const portCY = rowY + Q_ANS_H - 7;
+        const prevW = answers.slice(0, i).reduce((s, a) => s + answerCardW(a) + Q_CARD_PAD, 0);
+        const cW = answerCardW(ans);
+        const cardX = Q_CARD_PAD + prevW;
+        const cardY = Q_BASE_H + 7;
+        const cardH = Q_ANS_ROW_H - 20;
+        const cx = cardX + cW / 2;
         const connected = edges.some(e => e.from === node.id && e.label === ans);
         const letter = i < 26 ? ANSWER_LETTERS[i] : `${i + 1}`;
-        const targetNode = connected
-          ? edges.filter(e => e.from === node.id && e.label === ans).map(e => e.to)[0]
-          : null;
-        const displayAns = ans.length > maxAnsChars ? ans.slice(0, maxAnsChars - 1) + '…' : ans;
+        const maxChars = Math.max(2, Math.floor((cW - 20) / 7.5));
+        const displayAns = ans.length > maxChars ? ans.slice(0, maxChars - 1) + '…' : ans;
 
         return (
           <g key={ans + i}>
-            {/* Row separator */}
-            {i > 0 && <line x1={8} y1={rowY} x2={qW - 8} y2={rowY} stroke={amberLine} strokeWidth={0.5} />}
-
-            {/* Answer card */}
-            <rect x={8} y={cardY} width={qW - 16} height={cardH} rx={8}
+            {/* Card */}
+            <rect x={cardX} y={cardY} width={cW} height={cardH} rx={8}
               fill={connected ? cardBgConnected : cardBg}
-              stroke={connected ? amberLine : cardBorder} strokeWidth={1} />
+              stroke={connected ? amber : cardBorder} strokeWidth={connected ? 1.5 : 1} />
 
-            {/* Letter badge */}
-            <rect x={14} y={cardY + 8} width={22} height={22} rx={6}
+            {/* Letter badge — top center */}
+            <rect x={cx - 11} y={cardY + 7} width={22} height={22} rx={6}
               fill={connected ? amber : (isDark ? '#1e293b' : '#fef3c7')} />
-            <text x={25} y={cardY + 23} textAnchor="middle" fontSize={10} fontWeight={800}
+            <text x={cx} y={cardY + 22} textAnchor="middle" fontSize={10} fontWeight={800}
               fill={connected ? '#fff' : amber}
               style={{ pointerEvents: 'none', userSelect: 'none' }}>
               {letter}
             </text>
 
-            {/* Answer text */}
-            <text x={44} y={cardMidY + 5} fontSize={12} fontWeight={500}
+            {/* Answer text — below badge, centered */}
+            <text x={cx} y={cardY + 46} textAnchor="middle" fontSize={11} fontWeight={500}
               fill={connected ? (isDark ? '#fef3c7' : '#92400e') : textAns}
               fontFamily="ui-sans-serif,system-ui,sans-serif"
               style={{ pointerEvents: 'none', userSelect: 'none' }}>
               {displayAns}
             </text>
 
-            {/* Connection label */}
-            {connected && targetNode && (
-              <text x={qW - 10} y={cardMidY - 1} textAnchor="end" fontSize={9} fill={amber} fontWeight={600}
-                style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                → connected
-              </text>
-            )}
-
-            {/* Port nub — bottom center */}
+            {/* Port nub — bottom center of this card */}
             <circle
-              cx={qW / 2} cy={portCY} r={7}
+              cx={cx} cy={portRowY} r={7}
               fill={connected ? amber : (isDark ? '#0f172a' : '#fff')}
               stroke={amber} strokeWidth={1.5}
               style={{ cursor: 'crosshair', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.18))' }}
-              onMouseDown={e => onAnswerPortDown(e, node.id, ans, portCY)}
+              onMouseDown={e => onAnswerPortDown(e, node.id, ans, cx, portRowY)}
             />
             <path
-              d={`M ${qW / 2 - 3} ${portCY - 2} L ${qW / 2} ${portCY + 2} L ${qW / 2 + 3} ${portCY - 2}`}
+              d={`M ${cx - 3} ${portRowY - 2} L ${cx} ${portRowY + 2} L ${cx + 3} ${portRowY - 2}`}
               fill="none" stroke={connected ? '#fff' : amber} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
               style={{ pointerEvents: 'none' }}
             />
@@ -367,13 +362,16 @@ function EdgeLine({ edge, nodes, variant, t, isDark }: {
 
   if (variant === 'question') {
     const answers: string[] = (from.metadata?.answers as string[] | undefined) ?? [];
-    const fqW = questionNodeW(from);
     const idx = answers.indexOf(edge.label ?? '');
     if (idx >= 0) {
-      x1 = (from.x ?? 0) + fqW / 2;
-      y1 = (from.y ?? 0) + Q_BASE_H + idx * Q_ANS_H + Q_ANS_H - 7;
+      // x = left edge of cards + sum of previous card widths + gaps + half this card's width
+      const prevW = answers.slice(0, idx).reduce((s, a) => s + answerCardW(a) + Q_CARD_PAD, 0);
+      const cW = answerCardW(answers[idx]);
+      x1 = (from.x ?? 0) + Q_CARD_PAD + prevW + cW / 2;
+      y1 = (from.y ?? 0) + Q_BASE_H + Q_ANS_ROW_H - 8;
       exitDir = 'bottom';
     } else {
+      const fqW = questionNodeW(from);
       x1 = (from.x ?? 0) + fqW / 2;
       y1 = (from.y ?? 0) + questionNodeH(answers);
     }
@@ -835,11 +833,11 @@ export function DiagramEditor({
     setLiveEdge({ fromId: nodeId, fromX: (node.x ?? 0) + nW / 2, fromY: (node.y ?? 0) + NODE_H, exitDir: 'bottom', toX: x, toY: y });
   };
 
-  const onAnswerPortDown = (e: React.MouseEvent, nodeId: string, answer: string, portYInNode: number) => {
+  const onAnswerPortDown = (e: React.MouseEvent, nodeId: string, answer: string, portXInNode: number, portYInNode: number) => {
     e.stopPropagation();
     const node = model.nodes.find(n => n.id === nodeId)!;
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    setLiveEdge({ fromId: nodeId, fromX: (node.x ?? 0) + questionNodeW(node) / 2, fromY: (node.y ?? 0) + portYInNode, exitDir: 'bottom', answerLabel: answer, toX: x, toY: y });
+    setLiveEdge({ fromId: nodeId, fromX: (node.x ?? 0) + portXInNode, fromY: (node.y ?? 0) + portYInNode, exitDir: 'bottom', answerLabel: answer, toX: x, toY: y });
   };
 
   const onNodeMouseDown = (e: React.MouseEvent, id: string) => {
