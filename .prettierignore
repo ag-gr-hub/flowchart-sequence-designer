@@ -1,0 +1,7 @@
+dist
+node_modules
+demo/dist
+demo/node_modules
+*.lock
+*.lockb
+CHANGELOG.md

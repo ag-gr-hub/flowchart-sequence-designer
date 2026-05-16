@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Toolbar } from './Toolbar.js';
 import { StepEditor } from './StepEditor.js';
 import { SequenceEditor } from './SequenceEditor.js';
+import { Minimap } from './Minimap.js';
 import type { DiagramModel, DiagramNode, DiagramEdge, ExportFormat, DiagramVariant } from '../core/types.js';
 import { toMermaid } from '../exporters/mermaid.js';
 import { toPlantUML } from '../exporters/plantuml.js';
@@ -801,8 +802,35 @@ function FlowchartEditor({
   const [sysDark, setSysDark] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false
   );
+  const [viewport, setViewport] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  const [announcement, setAnnouncement] = useState('');
+  const [reducedMotion, setReducedMotion] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false
+  );
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // Track the SVG element size for the minimap viewport overlay.
+  useEffect(() => {
+    if (!svgRef.current || typeof ResizeObserver === 'undefined') return;
+    const el = svgRef.current;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      setViewport({ w: r.width, h: r.height });
+    });
+    ro.observe(el);
+    const r = el.getBoundingClientRect();
+    setViewport({ w: r.width, h: r.height });
+    return () => ro.disconnect();
+  }, []);
 
   // Listen for system theme changes
   useEffect(() => {
@@ -970,6 +998,74 @@ function FlowchartEditor({
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
+  // Touch: single-finger pan on empty canvas; two-finger pinch zoom anywhere.
+  // Node drag and live-edge drag stay on mouse handlers (touch on nodes maps
+  // through React synthetic events naturally for the down/up lifecycle).
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    let touchPan: { ox: number; oy: number; tx: number; ty: number } | null = null;
+    let pinch: { dist: number; cx: number; cy: number; scale: number; tx: number; ty: number } | null = null;
+
+    const dist = (a: Touch, b: Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const [a, b] = [e.touches[0], e.touches[1]];
+        const rect = el.getBoundingClientRect();
+        pinch = {
+          dist: dist(a, b),
+          cx: (a.clientX + b.clientX) / 2 - rect.left,
+          cy: (a.clientY + b.clientY) / 2 - rect.top,
+          scale: transform.scale, tx: transform.x, ty: transform.y,
+        };
+        touchPan = null;
+        return;
+      }
+      if (e.touches.length === 1) {
+        const target = e.target as SVGElement | null;
+        // Only start a pan when the touch begins on the background pattern or the SVG itself.
+        if (target?.dataset.bg !== '1' && target !== el) return;
+        const t0 = e.touches[0];
+        touchPan = { ox: t0.clientX, oy: t0.clientY, tx: transform.x, ty: transform.y };
+      }
+    };
+    const onMove = (e: TouchEvent) => {
+      if (pinch && e.touches.length === 2) {
+        e.preventDefault();
+        const [a, b] = [e.touches[0], e.touches[1]];
+        const ratio = dist(a, b) / pinch.dist;
+        const scale = Math.min(3, Math.max(0.15, pinch.scale * ratio));
+        setTransform({
+          scale,
+          x: pinch.cx - (pinch.cx - pinch.tx) * (scale / pinch.scale),
+          y: pinch.cy - (pinch.cy - pinch.ty) * (scale / pinch.scale),
+        });
+        return;
+      }
+      if (touchPan && e.touches.length === 1) {
+        e.preventDefault();
+        const t0 = e.touches[0];
+        setTransform(tr => ({ ...tr, x: touchPan!.tx + (t0.clientX - touchPan!.ox), y: touchPan!.ty + (t0.clientY - touchPan!.oy) }));
+      }
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) { touchPan = null; pinch = null; }
+      if (e.touches.length === 1) pinch = null;
+    };
+    el.addEventListener('touchstart', onStart, { passive: false });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd);
+    el.addEventListener('touchcancel', onEnd);
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onEnd);
+    };
+  }, [transform.scale, transform.x, transform.y]);
+
   const onPortMouseDown = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
     const node = model.nodes.find(n => n.id === nodeId)!;
@@ -1071,11 +1167,14 @@ function FlowchartEditor({
     const metadata = variant === 'question' ? { answers: [] } : undefined;
     const updated = { ...model, nodes: [...model.nodes, { id, label, shape: 'rectangle' as const, metadata, ...p }] };
     applyAndPush(updated); setSelected(id);
+    setAnnouncement(`Added ${variantLabel.toLowerCase()} "${label}".`);
   };
 
   const deleteNode = (nodeId: string) => {
+    const node = model.nodes.find(n => n.id === nodeId);
     const updated = { ...model, nodes: model.nodes.filter(n => n.id !== nodeId), edges: model.edges.filter(e => e.from !== nodeId && e.to !== nodeId) };
     applyAndPush(updated); if (selected === nodeId) setSelected(null);
+    if (node) setAnnouncement(`Deleted ${variantLabel.toLowerCase()} "${node.label}".`);
   };
 
   const deleteSelected = () => { if (selected) deleteNode(selected); };
@@ -1154,6 +1253,11 @@ function FlowchartEditor({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height, width: '100%', fontFamily: 'ui-sans-serif,system-ui,sans-serif', boxSizing: 'border-box', background: t.ctrlsBg }}>
+      {/* Screen-reader live region — announces selection/add/delete actions. */}
+      <div
+        role="status" aria-live="polite" aria-atomic="true"
+        style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 }}
+      >{announcement}</div>
       <Toolbar onExport={handleExport} onImport={allowImport ? handleImport : undefined} allowedExports={allowedExports} allowImport={allowImport} />
 
       {/* Controls bar */}
@@ -1195,7 +1299,10 @@ function FlowchartEditor({
           <svg
             ref={svgRef}
             width="100%" height="100%"
-            style={{ display: 'block', cursor: pan ? 'grabbing' : drag ? 'grabbing' : liveEdge ? 'crosshair' : 'default', userSelect: 'none' }}
+            role="application"
+            aria-label={`${variantLabel} diagram editor. ${model.nodes.length} ${variantLabel.toLowerCase()}s, ${model.edges.length} connections. Scroll to zoom, drag to pan, click a ${variantLabel.toLowerCase()} to select.`}
+            tabIndex={0}
+            style={{ display: 'block', cursor: pan ? 'grabbing' : drag ? 'grabbing' : liveEdge ? 'crosshair' : 'default', userSelect: 'none', outline: 'none' }}
             onMouseDown={onSvgMouseDown}
             onMouseMove={onMouseMove}
             onMouseUp={onMouseUp}
@@ -1203,7 +1310,11 @@ function FlowchartEditor({
             onContextMenu={onSvgContextMenu}
           >
             <defs>
-              <style>{`
+              <style>{reducedMotion ? `
+                .edge-flow { stroke-dasharray: 0; }
+                .edge-flow-amber { stroke-dasharray: 0; }
+                .edge-live { stroke-dasharray: 4 4; }
+              ` : `
                 @keyframes edgeFlow { to { stroke-dashoffset: -13; } }
                 @keyframes edgeFlowFast { to { stroke-dashoffset: -13; } }
                 .edge-flow { stroke-dasharray: 8 5; animation: edgeFlow 0.9s linear infinite; }
@@ -1258,6 +1369,8 @@ function FlowchartEditor({
                   <g
                     key={node.id}
                     transform={`translate(${node.x ?? 0},${node.y ?? 0})`}
+                    role="button"
+                    aria-label={`${variantLabel} ${variant === 'journey' ? idx + 1 + ': ' : ''}${node.label}${selected === node.id ? ', selected' : ''}`}
                     style={{ cursor: drag?.nodeId === node.id ? 'grabbing' : 'grab' }}
                     onMouseDown={e => onNodeMouseDown(e, node.id)}
                     onMouseUp={e => onNodeMouseUp(e, node.id)}
@@ -1266,6 +1379,7 @@ function FlowchartEditor({
                     onMouseEnter={() => setHoveredId(node.id)}
                     onMouseLeave={() => setHoveredId(null)}
                   >
+                    <title>{`${variantLabel}: ${node.label}`}</title>
                     {isQuestion ? (
                       <QuestionNode node={node} selected={selected === node.id} edges={model.edges} isDark={isDark} onAnswerPortDown={onAnswerPortDown} qW={nW} />
                     ) : (
@@ -1311,6 +1425,26 @@ function FlowchartEditor({
               <div style={{ fontSize: 36, opacity: 0.1, color: t.textPrimary }}>{variant === 'question' ? '?' : variant === 'journey' ? '↗' : '⬡'}</div>
               <div style={{ fontSize: 13, color: t.textMuted, fontWeight: 500 }}>Click <strong style={{ color: acc.color }}>+ {variantLabel}</strong> to start</div>
             </div>
+          )}
+
+          {model.nodes.length > 0 && viewport.w > 0 && (
+            <Minimap
+              model={model}
+              variant={variant}
+              viewportW={viewport.w}
+              viewportH={viewport.h}
+              transform={transform}
+              isDark={isDark}
+              accentColor={acc.color}
+              measureNode={(n) => {
+                const w = variant === 'question' ? questionNodeW(n) : nodeWidth(n.label);
+                const h = variant === 'question' ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
+                return { w, h };
+              }}
+              onCenterOn={(cx, cy) => {
+                setTransform(tr => ({ ...tr, x: viewport.w / 2 - cx * tr.scale, y: viewport.h / 2 - cy * tr.scale }));
+              }}
+            />
           )}
 
           {/* Context menu */}
