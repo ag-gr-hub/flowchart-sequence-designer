@@ -17,6 +17,7 @@ import {
   snap,
   bezierPath,
 } from './layout.js';
+import { findSiblingSnap, type AlignGuideV, type AlignGuideH } from './alignment.js';
 import type { DiagramModel, DiagramNode, DiagramEdge, ExportFormat, DiagramVariant } from '../core/types.js';
 import { toMermaid } from '../exporters/mermaid.js';
 import { toPlantUML } from '../exporters/plantuml.js';
@@ -93,6 +94,7 @@ function FlowchartEditor({
   const [pan, setPan] = useState<{ ox: number; oy: number; tx: number; ty: number } | null>(null);
   const [boxSel, setBoxSel] = useState<{ sx: number; sy: number; cx: number; cy: number; additive: boolean } | null>(null);
   const [liveEdge, setLiveEdge] = useState<LiveEdge | null>(null);
+  const [alignGuides, setAlignGuides] = useState<{ x?: AlignGuideV; y?: AlignGuideH } | null>(null);
   const groupDragOriginsRef = useRef<Map<string, { ox: number; oy: number }> | null>(null);
   const clipboardRef = useRef<{ nodes: DiagramNode[]; edges: DiagramEdge[] } | null>(null);
 
@@ -532,7 +534,20 @@ function FlowchartEditor({
         };
         applyModel(updated);
       } else {
-        const updated = { ...model, nodes: model.nodes.map(n => n.id === drag.nodeId ? { ...n, x: dx, y: dy } : n) };
+        const dragged = model.nodes.find(n => n.id === drag.nodeId);
+        if (!dragged) return;
+        const dW = variant === 'question' ? questionNodeW(dragged) : nodeWidth(dragged.label);
+        const dH = variant === 'question' ? questionNodeH((dragged.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
+        const others = model.nodes
+          .filter(n => n.id !== drag.nodeId)
+          .map(n => ({
+            x: n.x ?? 0, y: n.y ?? 0,
+            w: variant === 'question' ? questionNodeW(n) : nodeWidth(n.label),
+            h: variant === 'question' ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? []) : NODE_H,
+          }));
+        const snapResult = findSiblingSnap({ x: dx, y: dy, w: dW, h: dH }, others);
+        setAlignGuides(snapResult.guideX || snapResult.guideY ? { x: snapResult.guideX, y: snapResult.guideY } : null);
+        const updated = { ...model, nodes: model.nodes.map(n => n.id === drag.nodeId ? { ...n, x: snapResult.x, y: snapResult.y } : n) };
         applyModel(updated);
       }
     } else if (pan) {
@@ -572,6 +587,7 @@ function FlowchartEditor({
     // Commit drag position to history so it can be undone.
     if (drag) applyAndPush(model);
     groupDragOriginsRef.current = null;
+    setAlignGuides(null);
     setDrag(null); setPan(null);
     if (liveEdge) setLiveEdge(null);
   };
@@ -808,6 +824,25 @@ function FlowchartEditor({
                 const d = bezierPath(liveEdge.fromX, liveEdge.fromY, liveEdge.toX, liveEdge.toY, liveEdge.exitDir);
                 return <path d={d} fill="none" stroke={acc.color} strokeWidth={2} strokeLinecap="round" className="edge-live" opacity={0.8} markerEnd="url(#arrowLive)" />;
               })()}
+
+              {alignGuides?.x && (
+                <line
+                  x1={alignGuides.x.pos} x2={alignGuides.x.pos}
+                  y1={alignGuides.x.minY} y2={alignGuides.x.maxY}
+                  stroke={acc.color} strokeWidth={1 / transform.scale}
+                  strokeDasharray={`${4 / transform.scale} ${3 / transform.scale}`}
+                  opacity={0.85} pointerEvents="none"
+                />
+              )}
+              {alignGuides?.y && (
+                <line
+                  y1={alignGuides.y.pos} y2={alignGuides.y.pos}
+                  x1={alignGuides.y.minX} x2={alignGuides.y.maxX}
+                  stroke={acc.color} strokeWidth={1 / transform.scale}
+                  strokeDasharray={`${4 / transform.scale} ${3 / transform.scale}`}
+                  opacity={0.85} pointerEvents="none"
+                />
+              )}
 
               {model.nodes.map((node, idx) => {
                 const isHovered = hoveredId === node.id;
