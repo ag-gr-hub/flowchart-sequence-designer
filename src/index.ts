@@ -18,6 +18,7 @@ export { fromJSON } from './importers/json.js';
 // Types
 export type {
   DiagramType,
+  DiagramVariant,
   DiagramModel,
   DiagramNode,
   DiagramEdge,

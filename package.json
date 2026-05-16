@@ -1,8 +1,19 @@
 {
   "name": "flowchart-sequence-designer",
   "version": "0.1.0",
-  "description": "TypeScript library for building and editing flowcharts and sequence diagrams — programmatic API, React UI, and multi-format export (Mermaid, PlantUML, SVG, PNG, JSON).",
-  "type": "module",
+  "devDependencies": {
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "bun-types": "latest",
+    "react": "^18",
+    "react-dom": "^18",
+    "tsup": "^8",
+    "typescript": "^5"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -15,16 +26,11 @@
       "require": "./dist/ui/index.cjs"
     }
   },
+  "description": "TypeScript library for building and editing flowcharts and sequence diagrams — programmatic API, React UI, and multi-format export (Mermaid, PlantUML, SVG, PNG, JSON).",
   "files": [
     "dist",
     "README.md"
   ],
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "test": "bun test",
-    "typecheck": "tsc --noEmit"
-  },
   "keywords": [
     "flowchart",
     "sequence-diagram",
@@ -34,24 +40,19 @@
     "react"
   ],
   "license": "MIT",
-  "peerDependencies": {
-    "react": ">=18",
-    "react-dom": ">=18"
-  },
   "peerDependenciesMeta": {
-    "react": { "optional": true },
-    "react-dom": { "optional": true }
+    "react": {
+    "optional": true
   },
-  "dependencies": {
-    "@xyflow/react": "^12"
-  },
-  "devDependencies": {
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "bun-types": "latest",
-    "react": "^18",
-    "react-dom": "^18",
-    "tsup": "^8",
-    "typescript": "^5"
-  }
+  "react-dom": {
+  "optional": true
+}
+},
+"scripts": {
+  "build": "tsup",
+  "dev": "tsup --watch",
+  "test": "bun test",
+  "typecheck": "tsc --noEmit"
+},
+"type": "module"
 }
