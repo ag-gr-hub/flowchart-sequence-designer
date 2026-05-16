@@ -22,6 +22,26 @@ export function useIsDark(theme: 'light' | 'dark' | 'auto'): boolean {
 }
 
 /**
+ * Tracks the `(pointer: coarse)` media query. Returns `true` on touch-first
+ * devices so callers can grow hit targets accordingly.
+ */
+export function useIsCoarsePointer(): boolean {
+  const [coarse, setCoarse] = useState<boolean>(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(pointer: coarse)').matches
+      : false,
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(pointer: coarse)');
+    const handler = (e: MediaQueryListEvent) => setCoarse(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return coarse;
+}
+
+/**
  * Tracks the user's `prefers-reduced-motion` preference. Returns `true` if
  * the user has requested reduced motion. Listens for changes.
  */

@@ -7,7 +7,7 @@ import { NodeNavigator } from './NodeNavigator.js';
 import { ContextMenu, type CtxMenuState as CtxMenu } from './ContextMenu.js';
 import { NodeShape, QuestionNode, EdgeLine } from './render.js';
 import { useHistory } from './hooks/useHistory.js';
-import { useIsDark, usePrefersReducedMotion } from './hooks/useSystemTheme.js';
+import { useIsDark, usePrefersReducedMotion, useIsCoarsePointer } from './hooks/useSystemTheme.js';
 import {
   NODE_H,
   GRID,
@@ -137,6 +137,8 @@ function FlowchartEditor({
 
   const reducedMotion = usePrefersReducedMotion();
   const isDark = useIsDark(theme);
+  const isCoarse = useIsCoarsePointer();
+  const portR = isCoarse ? 9 : 6;
 
   // Track the SVG element size for the minimap viewport overlay.
   useEffect(() => {
@@ -358,12 +360,21 @@ function FlowchartEditor({
     if (!el) return;
     let touchPan: { ox: number; oy: number; tx: number; ty: number } | null = null;
     let pinch: { dist: number; cx: number; cy: number; scale: number; tx: number; ty: number } | null = null;
+    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+    let longPressStart: { x: number; y: number } | null = null;
+    let longPressFired = false;
 
     const dist = (a: Touch, b: Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+    const cancelLongPress = () => {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+      longPressStart = null;
+    };
 
     const onStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
         e.preventDefault();
+        cancelLongPress();
         const [a, b] = [e.touches[0], e.touches[1]];
         const rect = el.getBoundingClientRect();
         pinch = {
@@ -377,9 +388,20 @@ function FlowchartEditor({
       }
       if (e.touches.length === 1) {
         const target = e.target as SVGElement | null;
+        const t0 = e.touches[0];
+        longPressFired = false;
+        longPressStart = { x: t0.clientX, y: t0.clientY };
+        // Schedule the long-press regardless of target — fires the same ctx
+        // menu as a right-click. Cancelled by significant movement or by an
+        // early touchend below.
+        longPressTimer = setTimeout(() => {
+          if (!longPressStart) return;
+          longPressFired = true;
+          touchPan = null;
+          setCtxMenu({ x: longPressStart.x, y: longPressStart.y, nodeId: null });
+        }, 550);
         // Only start a pan when the touch begins on the background pattern or the SVG itself.
         if (target?.dataset.bg !== '1' && target !== el) return;
-        const t0 = e.touches[0];
         touchPan = { ox: t0.clientX, oy: t0.clientY, tx: transform.x, ty: transform.y };
       }
     };
@@ -396,13 +418,25 @@ function FlowchartEditor({
         });
         return;
       }
-      if (touchPan && e.touches.length === 1) {
-        e.preventDefault();
+      if (e.touches.length === 1) {
         const t0 = e.touches[0];
-        setTransform(tr => ({ ...tr, x: touchPan!.tx + (t0.clientX - touchPan!.ox), y: touchPan!.ty + (t0.clientY - touchPan!.oy) }));
+        if (longPressStart && (Math.abs(t0.clientX - longPressStart.x) > 8 || Math.abs(t0.clientY - longPressStart.y) > 8)) {
+          cancelLongPress();
+        }
+        if (touchPan) {
+          e.preventDefault();
+          setTransform(tr => ({ ...tr, x: touchPan!.tx + (t0.clientX - touchPan!.ox), y: touchPan!.ty + (t0.clientY - touchPan!.oy) }));
+        }
       }
     };
     const onEnd = (e: TouchEvent) => {
+      cancelLongPress();
+      // Swallow the tap that immediately follows a fired long-press so the
+      // synthetic click doesn't dismiss the menu we just opened.
+      if (longPressFired) {
+        e.preventDefault();
+        longPressFired = false;
+      }
       if (e.touches.length === 0) { touchPan = null; pinch = null; }
       if (e.touches.length === 1) pinch = null;
     };
@@ -411,6 +445,7 @@ function FlowchartEditor({
     el.addEventListener('touchend', onEnd);
     el.addEventListener('touchcancel', onEnd);
     return () => {
+      cancelLongPress();
       el.removeEventListener('touchstart', onStart);
       el.removeEventListener('touchmove', onMove);
       el.removeEventListener('touchend', onEnd);
@@ -915,16 +950,16 @@ function FlowchartEditor({
                           </text>
                         )}
                         <circle
-                          cx={nW / 2} cy={NODE_H + 1} r={6}
+                          cx={nW / 2} cy={NODE_H + 1} r={portR}
                           fill={acc.color} stroke={isDark ? '#0f172a' : 'white'} strokeWidth={2}
-                          style={{ cursor: 'crosshair', opacity: isHovered ? 1 : 0, transition: 'opacity 0.15s', pointerEvents: isHovered ? 'all' : 'none', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.25))' }}
+                          style={{ cursor: 'crosshair', opacity: isHovered || isCoarse ? 1 : 0, transition: 'opacity 0.15s', pointerEvents: (isHovered || isCoarse) ? 'all' : 'none', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.25))' }}
                           onMouseDown={e => onPortMouseDown(e, node.id)}
                         />
                       </>
                     )}
 
                     {liveEdge && liveEdge.fromId !== node.id && (
-                      <circle cx={nW / 2} cy={-1} r={6} fill={acc.color} stroke={isDark ? '#0f172a' : 'white'} strokeWidth={2} style={{ opacity: 0.85, pointerEvents: 'none' }} />
+                      <circle cx={nW / 2} cy={-1} r={portR} fill={acc.color} stroke={isDark ? '#0f172a' : 'white'} strokeWidth={2} style={{ opacity: 0.85, pointerEvents: 'none' }} />
                     )}
                   </g>
                 );
