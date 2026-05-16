@@ -6,6 +6,13 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `themeOverrides` prop on `DiagramEditor` and `SequenceEditor` — a
+  `Partial<ThemeColors>` (or `Partial<SequenceThemeColors>`) shallow-merged on
+  top of the resolved light/dark palette so consumers can match the editor to
+  their brand without forking. `ThemeColors` and `SequenceThemeColors` are now
+  exported from `flowchart-sequence-designer/ui`.
+
 ## [1.0.0] - 2026-05-16
 
 First stable release. The package is now published on npm and considered
