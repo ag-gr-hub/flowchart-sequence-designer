@@ -1,12 +1,7 @@
 import React from 'react';
 import type { ExportFormat } from '../core/types.js';
 
-interface ToolbarProps {
-  onExport: (format: ExportFormat) => void;
-  onImport?: (mermaid: string) => void;
-}
-
-const FORMATS: { key: ExportFormat; label: string }[] = [
+const ALL_FORMATS: { key: ExportFormat; label: string }[] = [
   { key: 'mermaid', label: 'Mermaid' },
   { key: 'plantuml', label: 'PlantUML' },
   { key: 'json', label: 'JSON' },
@@ -14,7 +9,18 @@ const FORMATS: { key: ExportFormat; label: string }[] = [
   { key: 'png', label: 'PNG' },
 ];
 
-export function Toolbar({ onExport, onImport }: ToolbarProps) {
+interface ToolbarProps {
+  onExport: (format: ExportFormat) => void;
+  onImport?: (text: string) => void;
+  allowedExports?: ExportFormat[];
+  allowImport?: boolean;
+}
+
+export function Toolbar({ onExport, onImport, allowedExports, allowImport = true }: ToolbarProps) {
+  const formats = allowedExports
+    ? ALL_FORMATS.filter(f => allowedExports.includes(f.key))
+    : ALL_FORMATS;
+
   const handleImport = () => {
     const text = prompt('Paste Mermaid or JSON:');
     if (text && onImport) onImport(text);
@@ -32,17 +38,21 @@ export function Toolbar({ onExport, onImport }: ToolbarProps) {
       <div style={divider} />
 
       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        {onImport && (
+        {allowImport && onImport && (
           <button onClick={handleImport} style={ghostBtn}>
             ↑ Import
           </button>
         )}
-        <span style={{ fontSize: 11, color: '#cbd5e1', margin: '0 4px' }}>Export →</span>
-        {FORMATS.map(f => (
-          <button key={f.key} onClick={() => onExport(f.key)} style={exportBtn}>
-            {f.label}
-          </button>
-        ))}
+        {formats.length > 0 && (
+          <>
+            <span style={{ fontSize: 11, color: '#cbd5e1', margin: '0 4px' }}>Export →</span>
+            {formats.map(f => (
+              <button key={f.key} onClick={() => onExport(f.key)} style={exportBtn}>
+                {f.label}
+              </button>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );

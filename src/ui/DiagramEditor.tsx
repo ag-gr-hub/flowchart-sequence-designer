@@ -38,6 +38,8 @@ interface DiagramEditorProps {
   onChange?: (model: DiagramModel) => void;
   onExport?: (format: ExportFormat, content: string | Blob) => void;
   height?: number | string;
+  allowedExports?: ExportFormat[];
+  allowImport?: boolean;
 }
 
 function snap(v: number) { return Math.round(v / GRID) * GRID; }
@@ -130,7 +132,7 @@ function EdgeLine({ edge, nodes }: { edge: DiagramEdge; nodes: DiagramNode[] }) 
 let _nodeSeq = 0;
 let _edgeSeq = 0;
 
-export function DiagramEditor({ initialModel, onChange, onExport, height = 600 }: DiagramEditorProps) {
+export function DiagramEditor({ initialModel, onChange, onExport, height = 600, allowedExports, allowImport = true }: DiagramEditorProps) {
   const base: DiagramModel = initialModel ?? { type: 'flowchart', nodes: [], edges: [] };
   const [model, setModel] = useState<DiagramModel>(base);
   const [transform, setTransform] = useState<Transform>({ x: 60, y: 60, scale: 1 });
@@ -258,7 +260,12 @@ export function DiagramEditor({ initialModel, onChange, onExport, height = 600 }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height, width: '100%', fontFamily: 'ui-sans-serif,system-ui,sans-serif', boxSizing: 'border-box', background: C.canvas }}>
-      <Toolbar onExport={handleExport} onImport={handleImport} />
+      <Toolbar
+        onExport={handleExport}
+        onImport={allowImport ? handleImport : undefined}
+        allowedExports={allowedExports}
+        allowImport={allowImport}
+      />
 
       {/* Controls bar */}
       <div style={{ display: 'flex', gap: 6, padding: '7px 14px', background: 'white', borderBottom: `1px solid ${C.slate300}`, alignItems: 'center', flexWrap: 'wrap' }}>
