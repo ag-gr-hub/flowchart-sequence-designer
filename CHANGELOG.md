@@ -21,6 +21,10 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - `Ctrl+C` / `Ctrl+V` copy and paste. Copy snapshots the selected nodes plus
   the edges that connect them, paste materializes fresh IDs offset by 24px
   and re-selects the new nodes.
+- Alignment guides and snap-to-sibling. When dragging a single node, dashed
+  indigo guide lines appear whenever its left/center/right or top/middle/
+  bottom edge lines up with another node, and the position snaps within a
+  4-pixel threshold. Group drags preserve relative offsets and skip the snap.
 
 ### Changed
 - Internal refactor: the 1500-line `DiagramEditor.tsx` monolith is split into
