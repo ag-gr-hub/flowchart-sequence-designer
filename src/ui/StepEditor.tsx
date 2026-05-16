@@ -155,9 +155,10 @@ export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart'
 
   const addTriggerStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-    marginTop: 10, width: '100%', padding: '8px 0', background: 'transparent',
+    marginTop: 10, width: '100%', padding: '9px 0', background: 'transparent',
     color: accentColor, border: `1.5px dashed ${accentBorder}`,
-    borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+    borderRadius: 10, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+    transition: 'background 0.15s, border-color 0.15s',
   };
 
   return (
@@ -228,7 +229,7 @@ export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart'
               const connected = model.edges.some(e => e.from === nodeId && e.label === ans);
               const targetNode = model.nodes.find(n => { const e = model.edges.find(ex => ex.from === nodeId && ex.label === ans); return e && n.id === e.to; });
               return (
-                <div key={ans + i} style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginBottom: 8, borderRadius: 10, border: `1.5px solid ${cardBorder}`, overflow: 'hidden', background: cardBg }}>
+                <div key={ans + i} style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginBottom: 8, borderRadius: 12, border: `1px solid ${cardBorder}`, overflow: 'hidden', background: cardBg, boxShadow: isDark ? 'none' : '0 1px 2px rgba(15,23,42,0.04)' }}>
                   <div style={{ width: 4, alignSelf: 'stretch', background: accentColor, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0, padding: '8px 10px' }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: textPrimary, marginBottom: connected ? 3 : 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ans}</div>
@@ -282,7 +283,7 @@ export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart'
             {outEdges.map(edge => {
               const target = model.nodes.find(n => n.id === edge.to);
               return (
-                <div key={edge.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginBottom: 8, borderRadius: 10, border: `1.5px solid ${cardBorder}`, overflow: 'hidden', background: cardBg }}>
+                <div key={edge.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginBottom: 8, borderRadius: 12, border: `1px solid ${cardBorder}`, overflow: 'hidden', background: cardBg, boxShadow: isDark ? 'none' : '0 1px 2px rgba(15,23,42,0.04)' }}>
                   <div style={{ width: 4, alignSelf: 'stretch', background: accentColor, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0, padding: '8px 10px' }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: textPrimary, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>→ {target?.label ?? edge.to}</div>
