@@ -70,8 +70,8 @@ export interface ThemeColors {
 }
 
 const lightTheme: ThemeColors = {
-  canvas: '#f8fafc', dot: '#dde3ed',
-  nodeFill: '#ffffff', nodeStroke: '#cbd5e1', nodeSelectedFill: '#f5f3ff',
+  canvas: '#fafbfc', dot: '#dbe3ee',
+  nodeFill: '#ffffff', nodeStroke: '#cbd5e1', nodeSelectedFill: '#eef2ff',
   edgeColor: '#94a3b8',
   textPrimary: '#1e293b', textSecondary: '#475569', textMuted: '#94a3b8',
   panelBg: '#ffffff', panelBorder: '#e2e8f0',
@@ -151,8 +151,14 @@ function bezierPath(x1: number, y1: number, x2: number, y2: number, exitDir: 'bo
     const c = Math.max(60, (dx + dy) * 0.45);
     return `M ${x1} ${y1} C ${x1 - c} ${y1}, ${x2} ${y2 - c * 0.5}, ${x2} ${y2}`;
   }
-  const dy = Math.abs(y2 - y1), dx = Math.abs(x2 - x1);
-  const curve = Math.max(50, (dy + dx) * 0.4);
+  // Default: down-from-source-bottom, up-into-target-top.
+  // Pull strength scales with vertical distance; when the target is at/above
+  // the source, add lateral compensation so the curve doesn't kink.
+  const dy = y2 - y1;
+  const dyAbs = Math.abs(dy);
+  const dxAbs = Math.abs(x2 - x1);
+  const base = dy > 0 ? dyAbs * 0.55 : Math.max(90, dyAbs * 0.5 + dxAbs * 0.28);
+  const curve = Math.max(36, Math.min(220, base));
   return `M ${x1} ${y1} C ${x1} ${y1 + curve}, ${x2} ${y2 - curve}, ${x2} ${y2}`;
 }
 
@@ -181,16 +187,32 @@ function NodeShape({ node, selected, variant, stepNumber, t, isDark, w }: {
   const cx = w / 2, cy = NODE_H / 2;
   const stroke = selected ? acc.color : t.nodeStroke;
   const fill = selected ? t.nodeSelectedFill : t.nodeFill;
-  const sw = selected ? 2 : 1.5;
+  const sw = selected ? 1.75 : 1.25;
 
+  // Selected: soft outer halo (blurred stroke) + crisp inner ring
   const glow = selected && (
-    <g style={{ filter: 'blur(7px)' }}>
-      {node.shape === 'circle'
-        ? <circle cx={cx} cy={cy} r={NODE_H / 2 + 5} fill={acc.glow} />
-        : node.shape === 'diamond'
-        ? <polygon points={`${cx},${-7} ${w + 7},${cy} ${cx},${NODE_H + 7} ${-7},${cy}`} fill={acc.glow} />
-        : <rect x={-5} y={-5} width={w + 10} height={NODE_H + 10} rx={16} fill={acc.glow} />}
-    </g>
+    <>
+      {node.shape === 'circle' ? (
+        <>
+          <circle cx={cx} cy={cy} r={NODE_H / 2 + 3} fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={{ filter: 'blur(4px)' }} />
+          <circle cx={cx} cy={cy} r={NODE_H / 2 + 1.5} fill="none" stroke={acc.color} strokeWidth={1} opacity={0.55} />
+        </>
+      ) : node.shape === 'diamond' ? (
+        <>
+          <polygon points={`${cx},${-5} ${w + 5},${cy} ${cx},${NODE_H + 5} ${-5},${cy}`}
+            fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={{ filter: 'blur(4px)' }} />
+          <polygon points={`${cx},${-2} ${w + 2},${cy} ${cx},${NODE_H + 2} ${-2},${cy}`}
+            fill="none" stroke={acc.color} strokeWidth={1} opacity={0.55} />
+        </>
+      ) : (
+        <>
+          <rect x={-4} y={-4} width={w + 8} height={NODE_H + 8} rx={18}
+            fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={{ filter: 'blur(4px)' }} />
+          <rect x={-1.5} y={-1.5} width={w + 3} height={NODE_H + 3} rx={15.5}
+            fill="none" stroke={acc.color} strokeWidth={1} opacity={0.5} />
+        </>
+      )}
+    </>
   );
 
   const badgeColor = isDark ? C.emeraldDark : C.emerald;
@@ -211,7 +233,7 @@ function NodeShape({ node, selected, variant, stepNumber, t, isDark, w }: {
     case 'parallelogram':
       return <>{glow}<polygon points={`14,0 ${w},0 ${w - 14},${NODE_H} 0,${NODE_H}`} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
     default:
-      return <>{glow}<rect width={w} height={NODE_H} rx={12} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
+      return <>{glow}<rect width={w} height={NODE_H} rx={14} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
   }
 }
 
@@ -240,11 +262,15 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, qW }: {
   // Port row y (bottom of answer section, shared by all cards)
   const portRowY = Q_BASE_H + Q_ANS_ROW_H - 8;
 
-  // Glow ring when selected
+  // Selected: soft outer halo + crisp inner ring (matches NodeShape treatment)
   const glow = selected && (
-    <g style={{ filter: 'blur(10px)' }}>
-      <rect x={-8} y={-8} width={qW + 16} height={totalH + 16} rx={18} fill={isDark ? 'rgba(251,191,36,0.18)' : 'rgba(251,191,36,0.25)'} />
-    </g>
+    <>
+      <rect x={-4} y={-4} width={qW + 8} height={totalH + 8} rx={18}
+        fill="none" stroke={amber} strokeWidth={6} opacity={0.2}
+        style={{ filter: 'blur(4px)' }} />
+      <rect x={-1.5} y={-1.5} width={qW + 3} height={totalH + 3} rx={15.5}
+        fill="none" stroke={amber} strokeWidth={1} opacity={0.55} />
+    </>
   );
 
   return (
@@ -960,8 +986,8 @@ export function DiagramEditor({
 
   const acc = variantAccent(variant, isDark);
   const variantLabel = variant === 'question' ? 'Question' : variant === 'journey' ? 'Step' : 'Node';
-  const shadowColor = isDark ? 'rgba(0,0,0,0.5)' : 'rgba(30,41,59,0.07)';
-  const arrowColor = isDark ? '#475569' : '#94a3b8';
+  const shadowColor = isDark ? 'rgba(0,0,0,0.55)' : 'rgba(15,23,42,0.09)';
+  const arrowColor = isDark ? '#64748b' : '#94a3b8';
   const amberArrow = isDark ? C.amberDark : C.amber;
 
   return (
@@ -1023,19 +1049,19 @@ export function DiagramEditor({
                 .edge-live { stroke-dasharray: 7 5; animation: edgeFlow 0.55s linear infinite; }
               `}</style>
               <pattern id="dots" width={GRID} height={GRID} patternUnits="userSpaceOnUse">
-                <circle cx={GRID / 2} cy={GRID / 2} r={1} fill={t.dot} />
+                <circle cx={GRID / 2} cy={GRID / 2} r={1.1} fill={t.dot} />
               </pattern>
-              <filter id="nodeShadow" x="-15%" y="-15%" width="130%" height="140%">
-                <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor={shadowColor} floodOpacity="1" />
+              <filter id="nodeShadow" x="-25%" y="-25%" width="150%" height="160%">
+                <feDropShadow dx="0" dy="3" stdDeviation="5" floodColor={shadowColor} floodOpacity="1" />
               </filter>
-              <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L8,3 L0,6 Z" fill={arrowColor} />
+              <marker id="arrowhead" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0.5 L9,3.5 L0,6.5 L2.2,3.5 Z" fill={arrowColor} />
               </marker>
-              <marker id="arrowAmber" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L8,3 L0,6 Z" fill={amberArrow} />
+              <marker id="arrowAmber" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0.5 L9,3.5 L0,6.5 L2.2,3.5 Z" fill={amberArrow} />
               </marker>
-              <marker id="arrowLive" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L8,3 L0,6 Z" fill={acc.color} />
+              <marker id="arrowLive" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0.5 L9,3.5 L0,6.5 L2.2,3.5 Z" fill={acc.color} />
               </marker>
             </defs>
 
