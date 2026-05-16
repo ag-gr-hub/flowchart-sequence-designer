@@ -20,6 +20,19 @@ bun install
 | `bun run dev` | Watch mode — rebuilds on save |
 | `bun test` | Run the test suite |
 | `bun run typecheck` | `tsc --noEmit` — type-check without emitting |
+| `bun run lint` | ESLint over `src/` (install dev deps first — see below) |
+| `bun run format` | Prettier-format `src/**/*.{ts,tsx,json}` |
+| `bun run format:check` | Check formatting without writing |
+
+### Optional lint/format tooling
+
+ESLint and Prettier are configured but the deps aren't pinned in `package.json`
+(to keep the install lean). To enable `bun run lint` / `bun run format`:
+
+```bash
+bun add -d eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin \
+  eslint-plugin-react eslint-plugin-react-hooks prettier
+```
 
 ### Running the demo locally
 

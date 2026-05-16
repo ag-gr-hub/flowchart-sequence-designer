@@ -47,7 +47,10 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "format": "prettier --write \"src/**/*.{ts,tsx,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,json}\""
   },
   "peerDependencies": {
     "react": ">=18",
