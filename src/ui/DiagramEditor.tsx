@@ -375,9 +375,17 @@ function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, qW }: {
 }
 
 // ── Edge ───────────────────────────────────────────────────────────────────
-function EdgeLine({ edge, nodes, variant, t, isDark }: {
+function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editValue, onEditChange, onEditCommit, onEditCancel, onDoubleClick, onContextMenu }: {
   edge: DiagramEdge; nodes: DiagramNode[]; variant: DiagramVariant;
   t: ThemeColors; isDark: boolean;
+  acc: { color: string };
+  editing?: boolean;
+  editValue?: string;
+  onEditChange?: (v: string) => void;
+  onEditCommit?: () => void;
+  onEditCancel?: () => void;
+  onDoubleClick?: (edgeId: string) => void;
+  onContextMenu?: (e: React.MouseEvent, edgeId: string) => void;
 }) {
   const from = nodes.find(n => n.id === edge.from);
   const to = nodes.find(n => n.id === edge.to);
@@ -416,10 +424,15 @@ function EdgeLine({ edge, nodes, variant, t, isDark }: {
   const edgeClr = variant === 'question' ? amberColor : t.edgeColor;
 
   const isAmber = variant === 'question';
+  const labelW = edge.label ? Math.max(60, Math.ceil(estimateTextW(edge.label, 7) + 18)) : 60;
+  void dash; // dash style currently overridden by edge-flow animation class
   return (
-    <g>
+    <g
+      onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick?.(edge.id); }}
+      onContextMenu={(e) => { onContextMenu?.(e, edge.id); }}
+    >
       {/* Wider transparent hit area */}
-      <path d={d} fill="none" stroke="transparent" strokeWidth={14} />
+      <path d={d} fill="none" stroke="transparent" strokeWidth={14} style={{ cursor: 'pointer' }} />
       {/* Animated flowing dash line */}
       <path
         d={d} fill="none" stroke={edgeClr}
@@ -428,14 +441,40 @@ function EdgeLine({ edge, nodes, variant, t, isDark }: {
         className={isAmber ? 'edge-flow-amber' : 'edge-flow'}
         markerEnd={isAmber ? 'url(#arrowAmber)' : 'url(#arrowhead)'}
         opacity={isAmber ? 0.85 : 0.9}
+        style={{ pointerEvents: 'none' }}
       />
-      {edge.label && !isAmber && (
+      {editing && !isAmber ? (
+        <foreignObject x={mx - labelW / 2} y={my - 12} width={labelW} height={22}>
+          <input
+            // @ts-ignore
+            xmlns="http://www.w3.org/1999/xhtml" autoFocus
+            value={editValue ?? ''}
+            onChange={(e) => onEditChange?.(e.target.value)}
+            onBlur={() => onEditCommit?.()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); onEditCommit?.(); }
+              if (e.key === 'Escape') { e.preventDefault(); onEditCancel?.(); }
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              width: '100%', height: '100%', border: 'none', borderRadius: 6,
+              outline: `2px solid ${acc.color}`,
+              textAlign: 'center', fontSize: 10, fontWeight: 500,
+              background: t.inputBg, color: t.inputText,
+              boxSizing: 'border-box', padding: '0 6px', fontFamily: 'inherit',
+            }}
+          />
+        </foreignObject>
+      ) : edge.label && !isAmber ? (
         <>
-          <rect x={mx - 30} y={my - 11} width={60} height={19} rx={5} fill={t.panelBg} stroke={t.cardBorder} strokeWidth={1} />
+          <rect x={mx - labelW / 2} y={my - 11} width={labelW} height={19} rx={5}
+            fill={t.panelBg} stroke={t.cardBorder} strokeWidth={1}
+            style={{ cursor: 'text' }} />
           <text x={mx} y={my + 4} textAnchor="middle" fontSize={10} fill={t.textSecondary}
-            fontFamily="ui-sans-serif,system-ui,sans-serif" fontWeight="500">{edge.label}</text>
+            fontFamily="ui-sans-serif,system-ui,sans-serif" fontWeight="500"
+            style={{ pointerEvents: 'none', userSelect: 'none' }}>{edge.label}</text>
         </>
-      )}
+      ) : null}
     </g>
   );
 }
@@ -602,15 +641,21 @@ function NodeNavigator({ model, selected, variant, isDark, t, acc, open, onToggl
 
 // ── Context menu ───────────────────────────────────────────────────────────
 interface CtxMenuProps {
-  x: number; y: number; nodeId: string | null;
+  x: number; y: number; nodeId: string | null; edgeId?: string | null;
   isDark: boolean; t: ThemeColors; acc: { color: string };
   canUndo: boolean; canRedo: boolean;
   onUndo(): void; onRedo(): void; onReCenter(): void; onAddNode(): void;
   onDuplicate(): void; onRename(): void; onDelete(): void; onDisconnect(): void;
+  onEdgeRename?(): void;
+  onEdgeStyle?(style: 'solid' | 'dashed' | 'dotted'): void;
+  onEdgeArrowhead?(arrow: 'arrow' | 'none'): void;
+  onEdgeDelete?(): void;
+  currentEdgeStyle?: 'solid' | 'dashed' | 'dotted';
+  currentEdgeArrow?: 'arrow' | 'none' | 'open';
   containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
-function ContextMenu({ x, y, nodeId, isDark, t, acc, canUndo, canRedo, onUndo, onRedo, onReCenter, onAddNode, onDuplicate, onRename, onDelete, onDisconnect, containerRef }: CtxMenuProps) {
+function ContextMenu({ x, y, nodeId, edgeId, isDark, t, acc, canUndo, canRedo, onUndo, onRedo, onReCenter, onAddNode, onDuplicate, onRename, onDelete, onDisconnect, onEdgeRename, onEdgeStyle, onEdgeArrowhead, onEdgeDelete, currentEdgeStyle, currentEdgeArrow, containerRef }: CtxMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x, y });
 
@@ -665,7 +710,23 @@ function ContextMenu({ x, y, nodeId, isDark, t, acc, canUndo, canRedo, onUndo, o
         fontFamily: 'ui-sans-serif,system-ui,sans-serif',
       }}
     >
-      {nodeId ? (
+      {edgeId ? (
+        <>
+          <div style={{ padding: '4px 14px 6px', fontSize: 10, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Edge</div>
+          {item('Rename label (dbl-click)', () => onEdgeRename?.())}
+          {divider}
+          <div style={{ padding: '4px 14px 2px', fontSize: 9, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Style</div>
+          {item(`Solid${currentEdgeStyle === 'solid' || !currentEdgeStyle ? ' ✓' : ''}`, () => onEdgeStyle?.('solid'))}
+          {item(`Dashed${currentEdgeStyle === 'dashed' ? ' ✓' : ''}`, () => onEdgeStyle?.('dashed'))}
+          {item(`Dotted${currentEdgeStyle === 'dotted' ? ' ✓' : ''}`, () => onEdgeStyle?.('dotted'))}
+          {divider}
+          <div style={{ padding: '4px 14px 2px', fontSize: 9, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Arrowhead</div>
+          {item(`Arrow${currentEdgeArrow !== 'none' ? ' ✓' : ''}`, () => onEdgeArrowhead?.('arrow'))}
+          {item(`None${currentEdgeArrow === 'none' ? ' ✓' : ''}`, () => onEdgeArrowhead?.('none'))}
+          {divider}
+          {item('Delete edge', () => onEdgeDelete?.(), '#ef4444')}
+        </>
+      ) : nodeId ? (
         <>
           <div style={{ padding: '4px 14px 6px', fontSize: 10, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Node</div>
           {item('Rename (dbl-click)', onRename)}
@@ -693,7 +754,8 @@ let _edgeSeq = 0;
 
 interface CtxMenu {
   x: number; y: number;             // screen position
-  nodeId: string | null;            // null = canvas right-click
+  nodeId: string | null;            // set = node right-click
+  edgeId?: string | null;           // set = edge right-click
 }
 
 export function DiagramEditor({
@@ -714,6 +776,8 @@ export function DiagramEditor({
   const [liveEdge, setLiveEdge] = useState<LiveEdge | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
+  const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null);
+  const [editEdgeLabel, setEditEdgeLabel] = useState('');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [navOpen, setNavOpen] = useState(true);
@@ -822,14 +886,50 @@ export function DiagramEditor({
   // Global keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Don't hijack keys when the user is typing in an input / textarea / contentEditable.
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
+
       const ctrl = e.ctrlKey || e.metaKey;
-      if (ctrl && e.key === 'z') { e.preventDefault(); undo(); }
-      if (ctrl && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); }
-      if (ctrl && e.key === '0') { e.preventDefault(); reCenter(); }
+      if (ctrl && e.key === 'z') { e.preventDefault(); undo(); return; }
+      if (ctrl && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); return; }
+      if (ctrl && e.key === '0') { e.preventDefault(); reCenter(); return; }
+      if (ctrl && (e.key === 'd' || e.key === 'D')) {
+        if (selected) { e.preventDefault(); duplicateNode(selected); }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (ctxMenu) setCtxMenu(null);
+        if (liveEdge) setLiveEdge(null);
+        if (editingId) setEditingId(null);
+        if (selected) setSelected(null);
+        return;
+      }
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selected) {
+        e.preventDefault();
+        deleteNode(selected);
+        return;
+      }
+
+      if (selected && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        const step = e.shiftKey ? GRID * 4 : GRID;
+        const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+        const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+        const updated = {
+          ...model,
+          nodes: model.nodes.map(n => n.id === selected
+            ? { ...n, x: snap((n.x ?? 0) + dx), y: snap((n.y ?? 0) + dy) }
+            : n),
+        };
+        applyAndPush(updated);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [undo, redo, reCenter]);
+  }, [undo, redo, reCenter, selected, ctxMenu, liveEdge, editingId, model, applyAndPush, duplicateNode]);
 
   const toCanvas = useCallback((clientX: number, clientY: number) => {
     const rect = svgRef.current!.getBoundingClientRect();
@@ -963,6 +1063,49 @@ export function DiagramEditor({
 
   const deleteSelected = () => { if (selected) deleteNode(selected); };
 
+  const beginEditEdge = (edgeId: string) => {
+    const edge = model.edges.find(e => e.id === edgeId);
+    if (!edge) return;
+    // Question-variant edge labels mirror an answer card; editing them on the canvas
+    // would desync the card so we ignore the double-click for that variant.
+    if (variant === 'question') return;
+    setEditingEdgeId(edgeId);
+    setEditEdgeLabel(edge.label ?? '');
+  };
+
+  const commitEdgeEdit = () => {
+    if (!editingEdgeId) return;
+    const next = editEdgeLabel.trim();
+    const updated = {
+      ...model,
+      edges: model.edges.map(e => e.id === editingEdgeId
+        ? { ...e, ...(next ? { label: next } : { label: undefined }) }
+        : e),
+    };
+    applyAndPush(updated);
+    setEditingEdgeId(null);
+  };
+
+  const onEdgeContextMenu = (e: React.MouseEvent, edgeId: string) => {
+    e.preventDefault(); e.stopPropagation();
+    setCtxMenu({ x: e.clientX, y: e.clientY, nodeId: null, edgeId });
+  };
+
+  const setEdgeStyle = (edgeId: string, style: 'solid' | 'dashed' | 'dotted') => {
+    const updated = { ...model, edges: model.edges.map(e => e.id === edgeId ? { ...e, style } : e) };
+    applyAndPush(updated);
+  };
+
+  const setEdgeArrowhead = (edgeId: string, arrowhead: 'arrow' | 'none') => {
+    const updated = { ...model, edges: model.edges.map(e => e.id === edgeId ? { ...e, arrowhead } : e) };
+    applyAndPush(updated);
+  };
+
+  const deleteEdge = (edgeId: string) => {
+    const updated = { ...model, edges: model.edges.filter(e => e.id !== edgeId) };
+    applyAndPush(updated);
+  };
+
   const handleExport = useCallback(async (format: ExportFormat) => {
     let content: string | Blob;
     switch (format) {
@@ -1070,7 +1213,18 @@ export function DiagramEditor({
             <rect width="100%" height="100%" fill="url(#dots)" data-bg="1" />
 
             <g transform={`translate(${transform.x},${transform.y}) scale(${transform.scale})`}>
-              {model.edges.map(e => <EdgeLine key={e.id} edge={e} nodes={model.nodes} variant={variant} t={t} isDark={isDark} />)}
+              {model.edges.map(e => (
+                <EdgeLine
+                  key={e.id} edge={e} nodes={model.nodes} variant={variant} t={t} isDark={isDark} acc={acc}
+                  editing={editingEdgeId === e.id}
+                  editValue={editEdgeLabel}
+                  onEditChange={setEditEdgeLabel}
+                  onEditCommit={commitEdgeEdit}
+                  onEditCancel={() => setEditingEdgeId(null)}
+                  onDoubleClick={beginEditEdge}
+                  onContextMenu={onEdgeContextMenu}
+                />
+              ))}
 
               {liveEdge && (() => {
                 const d = bezierPath(liveEdge.fromX, liveEdge.fromY, liveEdge.toX, liveEdge.toY, liveEdge.exitDir);
@@ -1143,37 +1297,46 @@ export function DiagramEditor({
           )}
 
           {/* Context menu */}
-          {ctxMenu && <ContextMenu
-            x={ctxMenu.x} y={ctxMenu.y}
-            nodeId={ctxMenu.nodeId}
-            isDark={isDark} t={t} acc={acc}
-            canUndo={historyIdxRef.current > 0}
-            canRedo={historyIdxRef.current < historyRef.current.length - 1}
-            onUndo={() => { undo(); setCtxMenu(null); }}
-            onRedo={() => { redo(); setCtxMenu(null); }}
-            onReCenter={() => { reCenter(); setCtxMenu(null); }}
-            onAddNode={() => {
-              const rect = svgRef.current!.getBoundingClientRect();
-              const cx = (ctxMenu.x - rect.left - transform.x) / transform.scale;
-              const cy = (ctxMenu.y - rect.top - transform.y) / transform.scale;
-              addNode({ x: cx, y: cy }); setCtxMenu(null);
-            }}
-            onDuplicate={() => { if (ctxMenu.nodeId) { duplicateNode(ctxMenu.nodeId); setCtxMenu(null); } }}
-            onRename={() => {
-              if (ctxMenu.nodeId) {
-                const node = model.nodes.find(n => n.id === ctxMenu.nodeId)!;
-                setEditingId(ctxMenu.nodeId); setEditLabel(node.label); setCtxMenu(null);
-              }
-            }}
-            onDelete={() => { if (ctxMenu.nodeId) { deleteNode(ctxMenu.nodeId); setCtxMenu(null); } }}
-            onDisconnect={() => {
-              if (ctxMenu.nodeId) {
-                const m = { ...model, edges: model.edges.filter(e => e.from !== ctxMenu.nodeId && e.to !== ctxMenu.nodeId) };
-                applyAndPush(m); setCtxMenu(null);
-              }
-            }}
-            containerRef={containerRef}
-          />}
+          {ctxMenu && (() => {
+            const ctxEdge = ctxMenu.edgeId ? model.edges.find(e => e.id === ctxMenu.edgeId) : undefined;
+            return <ContextMenu
+              x={ctxMenu.x} y={ctxMenu.y}
+              nodeId={ctxMenu.nodeId} edgeId={ctxMenu.edgeId}
+              isDark={isDark} t={t} acc={acc}
+              canUndo={historyIdxRef.current > 0}
+              canRedo={historyIdxRef.current < historyRef.current.length - 1}
+              onUndo={() => { undo(); setCtxMenu(null); }}
+              onRedo={() => { redo(); setCtxMenu(null); }}
+              onReCenter={() => { reCenter(); setCtxMenu(null); }}
+              onAddNode={() => {
+                const rect = svgRef.current!.getBoundingClientRect();
+                const cx = (ctxMenu.x - rect.left - transform.x) / transform.scale;
+                const cy = (ctxMenu.y - rect.top - transform.y) / transform.scale;
+                addNode({ x: cx, y: cy }); setCtxMenu(null);
+              }}
+              onDuplicate={() => { if (ctxMenu.nodeId) { duplicateNode(ctxMenu.nodeId); setCtxMenu(null); } }}
+              onRename={() => {
+                if (ctxMenu.nodeId) {
+                  const node = model.nodes.find(n => n.id === ctxMenu.nodeId)!;
+                  setEditingId(ctxMenu.nodeId); setEditLabel(node.label); setCtxMenu(null);
+                }
+              }}
+              onDelete={() => { if (ctxMenu.nodeId) { deleteNode(ctxMenu.nodeId); setCtxMenu(null); } }}
+              onDisconnect={() => {
+                if (ctxMenu.nodeId) {
+                  const m = { ...model, edges: model.edges.filter(e => e.from !== ctxMenu.nodeId && e.to !== ctxMenu.nodeId) };
+                  applyAndPush(m); setCtxMenu(null);
+                }
+              }}
+              currentEdgeStyle={ctxEdge?.style ?? 'solid'}
+              currentEdgeArrow={ctxEdge?.arrowhead ?? 'arrow'}
+              onEdgeRename={() => { if (ctxMenu.edgeId) { beginEditEdge(ctxMenu.edgeId); setCtxMenu(null); } }}
+              onEdgeStyle={(s) => { if (ctxMenu.edgeId) { setEdgeStyle(ctxMenu.edgeId, s); setCtxMenu(null); } }}
+              onEdgeArrowhead={(a) => { if (ctxMenu.edgeId) { setEdgeArrowhead(ctxMenu.edgeId, a); setCtxMenu(null); } }}
+              onEdgeDelete={() => { if (ctxMenu.edgeId) { deleteEdge(ctxMenu.edgeId); setCtxMenu(null); } }}
+              containerRef={containerRef}
+            />;
+          })()}
         </div>
 
         {selected && (
