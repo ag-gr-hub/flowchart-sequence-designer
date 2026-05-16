@@ -3,3 +3,4 @@ dist/
 *.js.map
 *.cjs.map
 .DS_Store
+package-lock.json
