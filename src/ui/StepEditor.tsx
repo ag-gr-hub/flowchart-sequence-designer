@@ -230,7 +230,7 @@ export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart'
               return (
                 <div key={ans + i} style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginBottom: 8, borderRadius: 10, border: `1.5px solid ${cardBorder}`, overflow: 'hidden', background: cardBg }}>
                   <div style={{ width: 4, alignSelf: 'stretch', background: accentColor, flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0, padding: '8px 8px 8px 0' }}>
+                  <div style={{ flex: 1, minWidth: 0, padding: '8px 10px' }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: textPrimary, marginBottom: connected ? 3 : 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ans}</div>
                     {connected && targetNode && <div style={{ fontSize: 11, color: accentColor, opacity: 0.85 }}>→ {targetNode.label}</div>}
                     {!connected && <div style={{ fontSize: 10, color: textMuted, fontStyle: 'italic' }}>drag port to connect</div>}
@@ -284,7 +284,7 @@ export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart'
               return (
                 <div key={edge.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginBottom: 8, borderRadius: 10, border: `1.5px solid ${cardBorder}`, overflow: 'hidden', background: cardBg }}>
                   <div style={{ width: 4, alignSelf: 'stretch', background: accentColor, flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0, padding: '8px 8px 8px 0' }}>
+                  <div style={{ flex: 1, minWidth: 0, padding: '8px 10px' }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: textPrimary, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>→ {target?.label ?? edge.to}</div>
                     <input value={edge.label ?? ''} onChange={e => updateEdgeLabel(edge.id, e.target.value)} placeholder="Edge label (optional)" style={{ ...inputStyle, fontSize: 11, padding: '4px 8px' }} />
                   </div>
