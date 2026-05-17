@@ -32,6 +32,13 @@ import { nextId, makeIdSource } from '../core/ids.js';
 import { ACCENT as C, type ThemeColors, lightTheme, darkTheme, variantAccent } from './theme.js';
 export type { ThemeColors } from './theme.js';
 
+// Static styles hoisted to module scope to avoid re-allocating an object per
+// render in the node/edge map loops.
+const STYLE_LABEL: React.CSSProperties = { pointerEvents: 'none', userSelect: 'none' };
+const STYLE_LIVE_PORT: React.CSSProperties = { opacity: 0.85, pointerEvents: 'none' };
+const STYLE_SR_ONLY: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 };
+const STYLE_FLEX_ROW: React.CSSProperties = { flex: 1, display: 'flex', overflow: 'hidden' };
+
 interface Transform { x: number; y: number; scale: number }
 interface DragState { nodeId: string; ox: number; oy: number }
 interface LiveEdge {
@@ -678,7 +685,7 @@ function FlowchartEditor({
       {/* Screen-reader live region — announces selection/add/delete actions. */}
       <div
         role="status" aria-live="polite" aria-atomic="true"
-        style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 }}
+        style={STYLE_SR_ONLY}
       >{announcement}</div>
       <Toolbar onExport={handleExport} onImport={allowImport ? handleImport : undefined} allowedExports={allowedExports} allowImport={allowImport} />
 
@@ -710,7 +717,7 @@ function FlowchartEditor({
         </div>
       )}
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={STYLE_FLEX_ROW}>
         {/* Node navigator */}
         <NodeNavigator
           model={model} selected={selected} variant={variant}
@@ -841,7 +848,7 @@ function FlowchartEditor({
                             />
                           </foreignObject>
                         ) : (
-                          <text x={nW / 2} y={NODE_H / 2 + 5} textAnchor="middle" fontSize={13} fontWeight="500" fontFamily="ui-sans-serif,system-ui,sans-serif" fill={isSelected ? acc.color : t.textPrimary} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                          <text x={nW / 2} y={NODE_H / 2 + 5} textAnchor="middle" fontSize={13} fontWeight="500" fontFamily="ui-sans-serif,system-ui,sans-serif" fill={isSelected ? acc.color : t.textPrimary} style={STYLE_LABEL}>
                             {node.label}
                           </text>
                         )}
@@ -855,7 +862,7 @@ function FlowchartEditor({
                     )}
 
                     {liveEdge && liveEdge.fromId !== node.id && (
-                      <circle cx={nW / 2} cy={-1} r={portR} fill={acc.color} stroke={isDark ? '#0f172a' : 'white'} strokeWidth={2} style={{ opacity: 0.85, pointerEvents: 'none' }} />
+                      <circle cx={nW / 2} cy={-1} r={portR} fill={acc.color} stroke={isDark ? '#0f172a' : 'white'} strokeWidth={2} style={STYLE_LIVE_PORT} />
                     )}
                   </g>
                 );
