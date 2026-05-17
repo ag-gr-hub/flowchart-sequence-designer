@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import type { DiagramModel, DiagramNode, DiagramVariant } from '../core/types.js';
+import type { DiagramModel, DiagramNode } from '../core/types.js';
 
 const W = 168;
 const H = 112;
@@ -9,7 +9,6 @@ interface NodeBox { id: string; x: number; y: number; w: number; h: number }
 
 export interface MinimapProps {
   model: DiagramModel;
-  variant: DiagramVariant;
   /** Canvas viewport size (the visible SVG element bounds, in CSS pixels). */
   viewportW: number;
   viewportH: number;
@@ -24,10 +23,9 @@ export interface MinimapProps {
 }
 
 export function Minimap({
-  model, variant, viewportW, viewportH, transform, measureNode, onCenterOn, isDark, accentColor,
+  model, viewportW, viewportH, transform, measureNode, onCenterOn, isDark, accentColor,
 }: MinimapProps) {
   const dragRef = useRef<{ active: boolean } | null>(null);
-  void variant;
 
   const boxes: NodeBox[] = model.nodes.map(n => {
     const { w, h } = measureNode(n);
