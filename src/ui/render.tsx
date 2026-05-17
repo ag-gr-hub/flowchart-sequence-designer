@@ -236,13 +236,17 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
   const hx = wp ? wp.x : (x1 + x2) / 2;
   const hy = wp ? wp.y : (y1 + y2) / 2;
   const mx = hx, my = hy - 8;
-  const dash = edge.style === 'dashed' ? '7,4' : edge.style === 'dotted' ? '2,4' : undefined;
+  const dash = edge.style === 'dashed' ? '7 4' : edge.style === 'dotted' ? '2 4' : undefined;
   const edgeClr = variant === 'question' ? amberColor : t.edgeColor;
 
   const isAmber = variant === 'question';
   const labelW = edge.label ? Math.max(60, Math.ceil(estimateTextW(edge.label, 7) + 18)) : 60;
   const showHandle = !!onWaypointDown && (hovered || !!wp);
-  void dash;
+  // The `edge-flow` / `edge-flow-amber` classes apply an animated flowing
+  // dasharray for solid edges. When the user explicitly picks `dashed` or
+  // `dotted`, honor that pattern statically — the animation would override
+  // it and confuse the chosen meaning.
+  const flowClass = dash ? undefined : isAmber ? 'edge-flow-amber' : 'edge-flow';
   return (
     <g
       onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick?.(edge.id); }}
@@ -255,7 +259,8 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
         d={d} fill="none" stroke={edgeClr}
         strokeWidth={isAmber ? 2 : 1.5}
         strokeLinecap="round"
-        className={isAmber ? 'edge-flow-amber' : 'edge-flow'}
+        className={flowClass}
+        strokeDasharray={dash}
         markerEnd={isAmber ? 'url(#arrowAmber)' : 'url(#arrowhead)'}
         opacity={isAmber ? 0.85 : 0.9}
         style={{ pointerEvents: 'none' }}

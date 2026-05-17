@@ -72,6 +72,14 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ### Fixed
 - Node drag operations now push to the undo history. Previously the drag
   mutated state directly and was lost on `Ctrl+Z`.
+- Edge `style: 'dashed'` and `style: 'dotted'` now render with the correct
+  dash pattern on the canvas. The previous render path computed the pattern
+  but discarded it — the animated `edge-flow` class overrode the value with
+  its own dasharray, so every edge looked solid regardless of style. The
+  animation now only runs on edges whose style is `'solid'` (the default);
+  explicitly dashed/dotted edges render statically with the user's chosen
+  pattern. Mermaid / PlantUML / JSON / SVG export already serialized the
+  style correctly — this was a canvas-only regression.
 
 ## [1.0.0] - 2026-05-16
 
