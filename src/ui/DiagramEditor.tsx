@@ -909,7 +909,6 @@ function FlowchartEditor({
           {model.nodes.length > 0 && viewport.w > 0 && (
             <Minimap
               model={model}
-              variant={variant}
               viewportW={viewport.w}
               viewportH={viewport.h}
               transform={transform}

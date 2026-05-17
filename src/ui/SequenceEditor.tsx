@@ -12,7 +12,6 @@ import { presetSequenceModel } from './presets.js';
 
 const INDIGO = '#4f46e5';
 const INDIGO_SOFT = '#eef2ff';
-const INDIGO_BORDER = '#c7d2fe';
 
 export interface SequenceThemeColors {
   canvas: string; dot: string;
@@ -583,4 +582,3 @@ function Label({ t, children }: { t: typeof lightTheme; children: React.ReactNod
   );
 }
 
-void INDIGO_BORDER;
