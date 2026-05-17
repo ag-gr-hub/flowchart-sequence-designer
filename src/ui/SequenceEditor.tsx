@@ -377,7 +377,7 @@ export function SequenceEditor({
         {/* Side panel */}
         {selectedMsg && (
           <div style={{
-            width: 280, flexShrink: 0,
+            width: 280, maxWidth: '40vw', flexShrink: 0,
             background: t.panelBg, borderLeft: `1px solid ${t.panelBorder}`,
             padding: '14px 16px', overflowY: 'auto',
           }}>

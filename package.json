@@ -24,6 +24,9 @@
     "typescript"
   ],
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "sideEffects": false,
   "exports": {
     ".": {

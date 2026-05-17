@@ -177,7 +177,7 @@ export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart'
               {SHAPES.map(s => {
                 const active = (node.shape ?? 'rectangle') === s.key;
                 return (
-                  <button key={s.key} onClick={() => setShape(s.key)} style={{
+                  <button key={s.key} onClick={() => setShape(s.key)} aria-pressed={active} style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                     padding: '8px 6px', borderRadius: 8, cursor: 'pointer', transition: 'all 0.15s',
                     background: active ? accentColor : tt.shapeBtnBg,

@@ -102,6 +102,8 @@ export function Minimap({
 
   return (
     <div
+      aria-label="Minimap — click to re-center the viewport"
+      role="img"
       style={{
         position: 'absolute', bottom: 14, right: 14,
         background: bg, border: `1px solid ${border}`,

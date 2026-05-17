@@ -219,10 +219,14 @@ export function SequenceCanvas(props: SequenceCanvasProps) {
             <circle
               cx={x + w / 2 - 12} cy={HEADER_PAD + 14} r={9}
               fill="transparent"
+              role="button"
+              tabIndex={0}
+              aria-label={`Remove actor ${name}`}
               style={STYLE_SEQ_REMOVE_BTN}
               onClick={() => removeActor(name)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeActor(name); } }}
             >
-              <title>Remove actor</title>
+              <title>Remove actor {name}</title>
             </circle>
             <text x={x + w / 2 - 12} y={HEADER_PAD + 18} textAnchor="middle" fontSize={12}
               fill={t.textMuted} style={STYLE_SEQ_REMOVE_ICON}>×</text>
