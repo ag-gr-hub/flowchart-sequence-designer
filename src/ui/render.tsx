@@ -15,6 +15,17 @@ import {
 } from './layout.js';
 import { ACCENT as C, variantAccent, type ThemeColors } from './theme.js';
 
+// Static style objects hoisted to module scope so React diffing doesn't see a
+// fresh `{}` on every render. Anything stable enough to be a constant lives
+// here; per-node theme-derived styles still allocate inline.
+const STYLE_LABEL: React.CSSProperties = { pointerEvents: 'none', userSelect: 'none' };
+const STYLE_BLUR: React.CSSProperties = { filter: 'blur(4px)' };
+const STYLE_EDGE_HIT: React.CSSProperties = { cursor: 'pointer' };
+const STYLE_NO_EVENTS: React.CSSProperties = { pointerEvents: 'none' };
+const STYLE_PORT_HOVER: React.CSSProperties = { cursor: 'crosshair', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.18))' };
+const STYLE_WAYPOINT: React.CSSProperties = { cursor: 'grab', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.25))' };
+const STYLE_EDGE_LABEL_HIT: React.CSSProperties = { cursor: 'text' };
+
 // ── Standard node shape ────────────────────────────────────────────────────
 export function NodeShape({ node, selected, variant, stepNumber, t, isDark, w }: {
   node: DiagramNode; selected: boolean; variant: DiagramVariant;
@@ -30,20 +41,20 @@ export function NodeShape({ node, selected, variant, stepNumber, t, isDark, w }:
     <>
       {node.shape === 'circle' ? (
         <>
-          <circle cx={cx} cy={cy} r={NODE_H / 2 + 3} fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={{ filter: 'blur(4px)' }} />
+          <circle cx={cx} cy={cy} r={NODE_H / 2 + 3} fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={STYLE_BLUR} />
           <circle cx={cx} cy={cy} r={NODE_H / 2 + 1.5} fill="none" stroke={acc.color} strokeWidth={1} opacity={0.55} />
         </>
       ) : node.shape === 'diamond' ? (
         <>
           <polygon points={`${cx},${-5} ${w + 5},${cy} ${cx},${NODE_H + 5} ${-5},${cy}`}
-            fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={{ filter: 'blur(4px)' }} />
+            fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={STYLE_BLUR} />
           <polygon points={`${cx},${-2} ${w + 2},${cy} ${cx},${NODE_H + 2} ${-2},${cy}`}
             fill="none" stroke={acc.color} strokeWidth={1} opacity={0.55} />
         </>
       ) : (
         <>
           <rect x={-4} y={-4} width={w + 8} height={NODE_H + 8} rx={18}
-            fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={{ filter: 'blur(4px)' }} />
+            fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={STYLE_BLUR} />
           <rect x={-1.5} y={-1.5} width={w + 3} height={NODE_H + 3} rx={15.5}
             fill="none" stroke={acc.color} strokeWidth={1} opacity={0.5} />
         </>
@@ -55,7 +66,7 @@ export function NodeShape({ node, selected, variant, stepNumber, t, isDark, w }:
   const badge = variant === 'journey' && stepNumber !== undefined && (
     <>
       <circle cx={14} cy={14} r={10} fill={badgeColor} />
-      <text x={14} y={18} textAnchor="middle" fontSize={9} fill="white" fontWeight="700" style={{ pointerEvents: 'none', userSelect: 'none' }}>{stepNumber}</text>
+      <text x={14} y={18} textAnchor="middle" fontSize={9} fill="white" fontWeight="700" style={STYLE_LABEL}>{stepNumber}</text>
     </>
   );
 
@@ -101,7 +112,7 @@ export function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, 
     <>
       <rect x={-4} y={-4} width={qW + 8} height={totalH + 8} rx={18}
         fill="none" stroke={amber} strokeWidth={6} opacity={0.2}
-        style={{ filter: 'blur(4px)' }} />
+        style={STYLE_BLUR} />
       <rect x={-1.5} y={-1.5} width={qW + 3} height={totalH + 3} rx={15.5}
         fill="none" stroke={amber} strokeWidth={1} opacity={0.55} />
     </>
@@ -117,8 +128,8 @@ export function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, 
       <rect width={qW} height={Q_BASE_H} fill={amberSoft} clipPath={`url(#qhdr-${node.id})`} />
       <rect x={0} y={0} width={4} height={Q_BASE_H} rx={2} fill={amber} />
       <rect x={12} y={14} width={28} height={28} rx={8} fill={amber} />
-      <text x={26} y={33} textAnchor="middle" fontSize={15} fontWeight="900" fill="white" style={{ pointerEvents: 'none', userSelect: 'none' }}>?</text>
-      <text style={{ pointerEvents: 'none', userSelect: 'none' }}
+      <text x={26} y={33} textAnchor="middle" fontSize={15} fontWeight="900" fill="white" style={STYLE_LABEL}>?</text>
+      <text style={STYLE_LABEL}
         fontFamily="ui-sans-serif,system-ui,sans-serif">
         <tspan x={50} y={27} fontSize={9} fontWeight={700} fill={textSub} letterSpacing={0.6} textAnchor="start">QUESTION</tspan>
         <tspan x={50} dy={15} fontSize={13} fontWeight={700} fill={selected ? amber : textMain} textAnchor="start">
@@ -128,10 +139,10 @@ export function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, 
       <line x1={0} y1={Q_BASE_H} x2={qW} y2={Q_BASE_H} stroke={amberLine} strokeWidth={1} />
       {answers.length === 0 && (
         <>
-          <text x={qW / 2} y={Q_BASE_H + 22} textAnchor="middle" fontSize={10} fill={amber} opacity={0.4} fontWeight={600} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+          <text x={qW / 2} y={Q_BASE_H + 22} textAnchor="middle" fontSize={10} fill={amber} opacity={0.4} fontWeight={600} style={STYLE_LABEL}>
             No answers yet
           </text>
-          <text x={qW / 2} y={Q_BASE_H + 36} textAnchor="middle" fontSize={9} fill={textSub} opacity={0.7} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+          <text x={qW / 2} y={Q_BASE_H + 36} textAnchor="middle" fontSize={9} fill={textSub} opacity={0.7} style={STYLE_LABEL}>
             Open panel → Add Answer
           </text>
         </>
@@ -157,26 +168,26 @@ export function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, 
               fill={connected ? amber : (isDark ? '#1e293b' : '#fef3c7')} />
             <text x={cx} y={cardY + 22} textAnchor="middle" fontSize={10} fontWeight={800}
               fill={connected ? '#fff' : amber}
-              style={{ pointerEvents: 'none', userSelect: 'none' }}>
+              style={STYLE_LABEL}>
               {letter}
             </text>
             <text x={cx} y={cardY + 46} textAnchor="middle" fontSize={11} fontWeight={500}
               fill={connected ? (isDark ? '#fef3c7' : '#92400e') : textAns}
               fontFamily="ui-sans-serif,system-ui,sans-serif"
-              style={{ pointerEvents: 'none', userSelect: 'none' }}>
+              style={STYLE_LABEL}>
               {displayAns}
             </text>
             <circle
               cx={cx} cy={portRowY} r={7}
               fill={connected ? amber : (isDark ? '#0f172a' : '#fff')}
               stroke={amber} strokeWidth={1.5}
-              style={{ cursor: 'crosshair', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.18))' }}
+              style={STYLE_PORT_HOVER}
               onMouseDown={e => onAnswerPortDown(e, node.id, ans, cx, portRowY)}
             />
             <path
               d={`M ${cx - 3} ${portRowY - 2} L ${cx} ${portRowY + 2} L ${cx + 3} ${portRowY - 2}`}
               fill="none" stroke={connected ? '#fff' : amber} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
-              style={{ pointerEvents: 'none' }}
+              style={STYLE_NO_EVENTS}
             />
           </g>
         );
@@ -254,7 +265,7 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <path d={d} fill="none" stroke="transparent" strokeWidth={14} style={{ cursor: 'pointer' }} />
+      <path d={d} fill="none" stroke="transparent" strokeWidth={14} style={STYLE_EDGE_HIT} />
       <path
         d={d} fill="none" stroke={edgeClr}
         strokeWidth={isAmber ? 2 : 1.5}
@@ -263,14 +274,14 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
         strokeDasharray={dash}
         markerEnd={isAmber ? 'url(#arrowAmber)' : 'url(#arrowhead)'}
         opacity={isAmber ? 0.85 : 0.9}
-        style={{ pointerEvents: 'none' }}
+        style={STYLE_NO_EVENTS}
       />
       {showHandle && (
         <circle
           cx={hx} cy={hy} r={wp ? 5 : 4}
           fill={wp ? acc.color : (isDark ? '#1e293b' : '#fff')}
           stroke={acc.color} strokeWidth={1.5}
-          style={{ cursor: 'grab', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.25))' }}
+          style={STYLE_WAYPOINT}
           onMouseDown={(e) => { e.stopPropagation(); onWaypointDown?.(e, edge.id); }}
         />
       )}
@@ -299,10 +310,10 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
         <>
           <rect x={mx - labelW / 2} y={my - 11} width={labelW} height={19} rx={5}
             fill={t.panelBg} stroke={t.cardBorder} strokeWidth={1}
-            style={{ cursor: 'text' }} />
+            style={STYLE_EDGE_LABEL_HIT} />
           <text x={mx} y={my + 4} textAnchor="middle" fontSize={10} fill={t.textSecondary}
             fontFamily="ui-sans-serif,system-ui,sans-serif" fontWeight="500"
-            style={{ pointerEvents: 'none', userSelect: 'none' }}>{edge.label}</text>
+            style={STYLE_LABEL}>{edge.label}</text>
         </>
       ) : null}
     </g>
