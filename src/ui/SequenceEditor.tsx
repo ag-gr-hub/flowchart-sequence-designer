@@ -10,6 +10,19 @@ import { nextId } from '../core/ids.js';
 const INDIGO = '#4f46e5';
 const INDIGO_SOFT = '#eef2ff';
 
+/**
+ * Color palette for `<SequenceEditor>`. Sequence diagrams use a smaller
+ * token set than flowcharts — there are no node shapes to color, but there
+ * are `lifeline`, `arrow`, and `actor*` tokens that flowcharts don't need.
+ *
+ * Token groups:
+ * - `canvas` / `dot` — background and dot-grid color.
+ * - `panel*` / `ctrls*` / `input*` / `card*` — chrome around the canvas.
+ * - `text*` — type ramp (primary > secondary > muted).
+ * - `lifeline` — vertical actor lifeline color.
+ * - `arrow` — message arrow + label color.
+ * - `actorFill` / `actorStroke` / `actorText` — actor header box.
+ */
 export interface SequenceThemeColors {
   canvas: string; dot: string;
   panelBg: string; panelBorder: string;
@@ -71,6 +84,26 @@ const COL_MIN = 160;       // min column width
 const ROW_H = 64;          // vertical spacing per message
 const SIDE_PAD = 40;       // left/right padding
 
+/**
+ * Props for `<SequenceEditor>`. Mirrors `DiagramEditorProps` minus the
+ * flowchart-only `variant` field; the theme override type is the
+ * sequence-specific palette.
+ *
+ * @property initialModel    Initial sequence model. Defaults to
+ *                           `presetSequenceModel()` if omitted or if a
+ *                           non-sequence model is passed.
+ * @property onChange        Fires after every committed mutation.
+ * @property onExport        Optional sink for exporter output. If omitted, the
+ *                           editor triggers a browser download of `sequence.<ext>`.
+ * @property height          Canvas height; accepts CSS units. Defaults to `600`.
+ * @property allowedExports  Whitelist of export formats. Defaults to all.
+ * @property allowImport     Show the import button. Defaults to `true`.
+ * @property theme           `'light'`, `'dark'`, or `'auto'` (follow OS).
+ * @property themeOverrides  Per-property overrides on top of the resolved
+ *                           sequence palette. `themeOverrides` passed to
+ *                           `<DiagramEditor>` is forwarded here when
+ *                           `type === 'sequence'`.
+ */
 export interface SequenceEditorProps {
   initialModel?: DiagramModel;
   onChange?: (model: DiagramModel) => void;
@@ -79,11 +112,6 @@ export interface SequenceEditorProps {
   allowedExports?: ExportFormat[];
   allowImport?: boolean;
   theme?: 'light' | 'dark' | 'auto';
-  /**
-   * Override individual colors in the resolved sequence-diagram theme.
-   * Applied on top of the built-in light/dark palette. `themeOverrides`
-   * passed to DiagramEditor is forwarded here when type === 'sequence'.
-   */
   themeOverrides?: Partial<SequenceThemeColors>;
 }
 
@@ -103,6 +131,18 @@ function ensureSequenceModel(m?: DiagramModel): DiagramModel {
   return presetSequenceModel();
 }
 
+/**
+ * Sequence-diagram specialization of the editor. Accepts the same props as
+ * `<DiagramEditor>` but renders a swim-lane layout with drag-to-reorder
+ * messages and inline label editing.
+ *
+ * @example
+ * ```tsx
+ * import { SequenceEditor, presetSequenceModel } from 'flowchart-sequence-designer/ui';
+ *
+ * <SequenceEditor initialModel={presetSequenceModel()} theme="dark" />
+ * ```
+ */
 export function SequenceEditor({
   initialModel, onChange, onExport, height = 600,
   allowedExports, allowImport = true, theme = 'auto',

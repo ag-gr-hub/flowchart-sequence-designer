@@ -46,6 +46,29 @@ interface LiveEdge {
   exitDir: 'bottom' | 'right' | 'left'; answerLabel?: string; toX: number; toY: number;
 }
 
+/**
+ * Props for `<DiagramEditor>`. All fields are optional — mounting with no
+ * props renders the flowchart preset on an `auto`-themed canvas with every
+ * export format and import enabled.
+ *
+ * @property initialModel    Initial diagram. If a sequence model is passed,
+ *                           rendering is delegated to `<SequenceEditor>`. If
+ *                           omitted, `presetFlowchartModel(variant)` is used.
+ * @property onChange        Fires after every committed mutation (undo/redo,
+ *                           drag, label edit, etc.). Receives the new model.
+ * @property onExport        Optional sink for exporter output. If omitted, the
+ *                           editor triggers a browser download of `diagram.<ext>`.
+ * @property height          Canvas height; accepts CSS units. Defaults to `600`.
+ * @property allowedExports  Whitelist of export formats to show in the
+ *                           toolbar. Defaults to all formats.
+ * @property allowImport     Show the import button. Defaults to `true`.
+ * @property variant         Initial variant when `initialModel` is omitted.
+ *                           Ignored if `initialModel.variant` is set.
+ * @property theme           `'light'`, `'dark'`, or `'auto'` (follow OS).
+ *                           Defaults to `'auto'`.
+ * @property themeOverrides  Per-property overrides on top of the resolved
+ *                           palette. Useful for brand-matching without forking.
+ */
 export interface DiagramEditorProps {
   initialModel?: DiagramModel;
   onChange?: (model: DiagramModel) => void;
@@ -55,16 +78,25 @@ export interface DiagramEditorProps {
   allowImport?: boolean;
   variant?: DiagramVariant;
   theme?: 'light' | 'dark' | 'auto';
-  /**
-   * Override individual colors in the resolved theme. Applied on top of the
-   * built-in light/dark palette. Useful for matching the editor to a host
-   * application's brand without forking the component.
-   */
   themeOverrides?: Partial<ThemeColors>;
 }
 
 
 
+/**
+ * The all-in-one editor component. Renders a smart router: if the supplied
+ * `initialModel.type` is `sequence`, it delegates to `<SequenceEditor>` with
+ * the same props pass-through. Otherwise it renders the flowchart editor.
+ *
+ * @example
+ * ```tsx
+ * import { DiagramEditor } from 'flowchart-sequence-designer/ui';
+ *
+ * export default function App() {
+ *   return <DiagramEditor height={520} onChange={(m) => console.log(m)} />;
+ * }
+ * ```
+ */
 export function DiagramEditor(props: DiagramEditorProps) {
   // Delegate sequence diagrams to the dedicated SequenceEditor.
   if (props.initialModel?.type === 'sequence') {

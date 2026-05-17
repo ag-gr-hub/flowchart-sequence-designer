@@ -11,6 +11,10 @@
 
 import type { DiagramModel, DiagramVariant, DiagramType } from '../core/types.js';
 
+/**
+ * Return a blank model of the requested type/variant. Useful as
+ * `initialModel={emptyModel('flowchart')}` to opt out of the demo preset.
+ */
 export function emptyModel(
   type: DiagramType,
   variant?: DiagramVariant,
@@ -95,12 +99,25 @@ const SEQUENCE_PRESET: DiagramModel = {
   ],
 };
 
+/**
+ * Return a fresh, ready-to-edit flowchart model for the requested variant.
+ * The result is a deep clone — callers may mutate freely without affecting
+ * future calls.
+ *
+ * - `flowchart` → 6-node order-processing example with a decision diamond
+ * - `question`  → 1-question / 3-answer routing example
+ * - `journey`   → 5-step linear onboarding sequence
+ */
 export function presetFlowchartModel(variant: DiagramVariant = 'flowchart'): DiagramModel {
   if (variant === 'question') return cloneModel(QUESTION_PRESET);
   if (variant === 'journey')  return cloneModel(JOURNEY_PRESET);
   return cloneModel(FLOWCHART_PRESET);
 }
 
+/**
+ * Return a fresh, ready-to-edit sequence model — a 4-message User → App →
+ * Server login flow. Deep-cloned; safe to mutate.
+ */
 export function presetSequenceModel(): DiagramModel {
   return cloneModel(SEQUENCE_PRESET);
 }

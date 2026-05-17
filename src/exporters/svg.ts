@@ -253,6 +253,18 @@ function renderEdge(edge: DiagramEdge, boxes: Map<string, LayoutBox>, variant: D
   return out;
 }
 
+/**
+ * Render a `DiagramModel` to a standalone SVG string. The output mirrors the
+ * editor canvas: dot-grid background, soft drop-shadowed nodes, smooth
+ * cubic-bezier edges. No external assets — the result is fully inline and
+ * pasteable into HTML, README files, or PR descriptions.
+ *
+ * Layout is computed identically to the editor's hit-test pass (same width
+ * estimation, padding, and question-card sizing), so an exported SVG matches
+ * what you see on screen.
+ *
+ * Works in Node, Bun, and the browser (no DOM APIs needed).
+ */
 export function toSVG(model: DiagramModel): string {
   const boxes = computeLayout(model);
   let maxX = 0, maxY = 0;
@@ -290,6 +302,15 @@ export function toSVG(model: DiagramModel): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n${defs}\n<rect width="${width}" height="${height}" fill="${COLORS.bg}"/>\n<rect width="${width}" height="${height}" fill="url(#dotgrid)"/>\n${titleEl}\n${edges}\n${nodes}\n</svg>`;
 }
 
+/**
+ * Render a `DiagramModel` to a PNG `Blob`. Routes the SVG output through an
+ * `<img>` and a `<canvas>` at `devicePixelRatio` scale, so the result is
+ * crisp on hi-DPI displays.
+ *
+ * **Browser-only.** Throws if called in a Node/Bun environment (the Canvas
+ * API is not available). For server-side PNG rendering, pipe `toSVG()` output
+ * through a library like `@resvg/resvg-js`.
+ */
 export async function toPNG(model: DiagramModel): Promise<Blob> {
   if (typeof document === 'undefined') {
     throw new Error('toPNG requires a browser environment. For Node/Bun server use, pipe toSVG() through @resvg/resvg-js.');
