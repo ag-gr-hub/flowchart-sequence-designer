@@ -1,3 +1,11 @@
+/**
+ * Headless entry point. Builders, the underlying `Model`, and every
+ * exporter/importer are exported here. The editor React components live in
+ * the `/ui` subpath export — `import { DiagramEditor } from
+ * 'flowchart-sequence-designer/ui'` — so server-side or CLI consumers can
+ * pull in this entry without dragging React along.
+ */
+
 // Builders
 export { flowchart, FlowchartBuilder } from './core/flowchart.js';
 export { sequence, SequenceBuilder } from './core/sequence.js';

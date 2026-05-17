@@ -57,6 +57,21 @@ function exportSequence(model: DiagramModel): string {
   return lines.join('\n');
 }
 
+/**
+ * Serialize a `DiagramModel` to Mermaid source. Dispatches between
+ * `graph TD` (flowchart) and `sequenceDiagram` based on `model.type`.
+ *
+ * **Round-trip notes (flowchart):**
+ * - Node shapes `rectangle`, `diamond`, `circle`, `parallelogram` map to
+ *   `[ ]`, `{ }`, `(( ))`, `[/ /]` respectively.
+ * - Edge style `solid` → `-->`, `dashed` and `dotted` → `-.->` (Mermaid
+ *   collapses dotted to dashed). `arrowhead: 'none'` strips the head.
+ * - `waypoint`, `metadata`, and `variant` are **dropped** — Mermaid has no
+ *   way to encode routing or arbitrary metadata.
+ *
+ * **Round-trip notes (sequence):**
+ * - Message style `solid` → `->>`, `dashed` → `-->>`.
+ */
 export function toMermaid(model: DiagramModel): string {
   return model.type === 'sequence' ? exportSequence(model) : exportFlowchart(model);
 }

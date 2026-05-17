@@ -1,5 +1,23 @@
 import type { DiagramVariant } from '../core/types.js';
 
+/**
+ * Color palette for the flowchart `<DiagramEditor>`. Every visual surface
+ * pulls from one of these tokens, so overriding any single property via
+ * `themeOverrides` updates every element that uses it. Built-in
+ * `lightTheme` and `darkTheme` are exported as ready-made values.
+ *
+ * Token groups:
+ * - `canvas` / `dot` — background and dot-grid color.
+ * - `nodeFill` / `nodeStroke` / `nodeSelectedFill` — base node styling.
+ * - `edgeColor` — edge stroke and arrowhead color.
+ * - `text*` — type ramp (primary > secondary > muted).
+ * - `panel*` / `ctrls*` / `input*` / `card*` / `section*` — chrome around
+ *   the canvas (side panel, controls, form fields, card rows).
+ * - `labelText` / `hintText` — small-text accents inside chrome.
+ * - `statusBg` / `bannerBg` — bottom validation banner backdrop.
+ * - `btnSec*` / `shapeBtn*` — secondary button surfaces.
+ * - `addFormBg` — accent backdrop for the "add node" form.
+ */
 export interface ThemeColors {
   canvas: string; dot: string;
   nodeFill: string; nodeStroke: string; nodeSelectedFill: string;
@@ -19,6 +37,7 @@ export interface ThemeColors {
   bannerBg: string;
 }
 
+/** Default light palette. Indigo accent on a near-white canvas. */
 export const lightTheme: ThemeColors = {
   canvas: '#fafbfc', dot: '#dbe3ee',
   nodeFill: '#ffffff', nodeStroke: '#cbd5e1', nodeSelectedFill: '#eef2ff',
@@ -38,6 +57,7 @@ export const lightTheme: ThemeColors = {
   bannerBg: '#f8fafc',
 };
 
+/** Default dark palette. Slate canvas with a softer indigo accent. */
 export const darkTheme: ThemeColors = {
   canvas: '#0f172a', dot: '#1e293b',
   nodeFill: '#1e293b', nodeStroke: '#334155', nodeSelectedFill: '#1e1b4b',

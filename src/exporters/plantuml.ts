@@ -54,6 +54,22 @@ function exportSequence(model: DiagramModel): string {
   return lines.join('\n');
 }
 
+/**
+ * Serialize a `DiagramModel` to PlantUML source. Dispatches between the
+ * state-diagram form (flowchart) and the sequence-diagram form based on
+ * `model.type`.
+ *
+ * **Round-trip notes (flowchart):**
+ * - Edge style maps `solid` → `-->`, `dashed` → `-[dashed]->`,
+ *   `dotted` → `-[dotted]->`.
+ * - Node shapes are emitted via the `state ".." as id < >` syntax; some
+ *   shape information is lossy (PlantUML state diagrams don't distinguish
+ *   every shape this package supports).
+ * - `waypoint`, `metadata`, and `variant` are **dropped**.
+ *
+ * **Round-trip notes (sequence):**
+ * - Actor order is preserved; message style `solid` → `->`, `dashed` → `-->`.
+ */
 export function toPlantUML(model: DiagramModel): string {
   return model.type === 'sequence' ? exportSequence(model) : exportFlowchart(model);
 }

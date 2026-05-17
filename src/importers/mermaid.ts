@@ -152,6 +152,24 @@ function parseSequence(lines: string[], title?: string): Model {
   return model;
 }
 
+/**
+ * Parse Mermaid source into a `Model`. Auto-detects `flowchart` /
+ * `sequenceDiagram` from the directive line and dispatches accordingly.
+ *
+ * **What is preserved:**
+ * - Flowcharts: node shapes (`[]` / `{}` / `(())` / `[/]`), node labels,
+ *   edge connectors (`-->`, `-.->`, `---`, `-.-`), edge labels, and
+ *   `subgraph` grouping (stored on `node.metadata.group`).
+ * - Sequence: actor declarations, message arrows (`->>`, `-->>`), labels.
+ * - Frontmatter `title: ...` blocks are lifted into `model.title`.
+ *
+ * **What is dropped or normalized:**
+ * - `mermaid.initialize(...)` blocks, `%%{init: ...}%%` directives, and
+ *   click handlers — stripped before parsing.
+ * - Dotted edges collapse to `dashed` (Mermaid's dot/dash style is lossy).
+ * - Node positions, `waypoint`, and any package-specific metadata other
+ *   than `group` are not present in Mermaid and so cannot round-trip.
+ */
 export function fromMermaid(mermaid: string): Model {
   // Strip mermaid.initialize(...) and similar JS-style config blocks that
   // sometimes appear in copy-pasted snippets — anything between `init` and `)`.
