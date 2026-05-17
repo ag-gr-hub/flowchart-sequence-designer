@@ -93,6 +93,15 @@ export interface SequenceEditorProps {
 let _msgSeq = 0;
 const mid = () => `m${++_msgSeq}`;
 
+interface DragState {
+  id: string;
+  startY: number;       // clientY at mousedown (page-space)
+  originalIdx: number;  // index in messages[] at drag start
+  targetIdx: number;    // current preview position
+  active: boolean;      // true once the cursor moves > DRAG_THRESHOLD
+}
+const DRAG_THRESHOLD = 5;
+
 function ensureSequenceModel(m?: DiagramModel): DiagramModel {
   if (m && m.type === 'sequence') {
     return { ...m, actors: m.actors ?? [], messages: m.messages ?? [] };
@@ -107,7 +116,7 @@ export function SequenceEditor({
 }: SequenceEditorProps) {
   const [model, setModel] = useState<DiagramModel>(() => ensureSequenceModel(initialModel));
   const [selected, setSelected] = useState<string | null>(null);
-  const [dragMsgId, setDragMsgId] = useState<string | null>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const historyRef = useRef<DiagramModel[]>([ensureSequenceModel(initialModel)]);
@@ -223,14 +232,14 @@ export function SequenceEditor({
     if (selected === id) setSelected(null);
   };
 
-  const reorderMessage = (id: string, toIdx: number) => {
+  const reorderMessage = useCallback((id: string, toIdx: number) => {
     const fromIdx = messages.findIndex(m => m.id === id);
     if (fromIdx < 0 || toIdx === fromIdx) return;
     const next = messages.slice();
     const [moved] = next.splice(fromIdx, 1);
     next.splice(toIdx, 0, moved);
     applyAndPush({ ...model, messages: next });
-  };
+  }, [messages, model, applyAndPush]);
 
   // ── Keyboard ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -286,21 +295,60 @@ export function SequenceEditor({
   }, [applyAndPush]);
 
   // ── Drag-to-reorder ─────────────────────────────────────────────────────
+  // Mousedown seeds drag state but does NOT mark it active — that flips on
+  // first move past DRAG_THRESHOLD so a click doesn't reorder. We mutate the
+  // model exactly once on mouseup; intermediate moves only update preview
+  // state, so the history stack stays clean and rows can't cascade.
   const onRowMouseDown = (e: React.MouseEvent, id: string) => {
-    if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).tagName === 'SELECT') return;
+    const tag = (e.target as HTMLElement).tagName;
+    if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'SELECT') return;
+    const idx = messages.findIndex(m => m.id === id);
+    if (idx < 0) return;
     e.preventDefault();
-    setDragMsgId(id);
     setSelected(id);
+    setDrag({ id, startY: e.clientY, originalIdx: idx, targetIdx: idx, active: false });
   };
-  const onSvgMouseMove = (e: React.MouseEvent) => {
-    if (!dragMsgId || !svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    const y = e.clientY - rect.top;
+
+  useEffect(() => {
+    if (!drag) return;
     const baseY = HEADER_PAD + HEADER_H + 40;
-    const idx = Math.max(0, Math.min(messages.length - 1, Math.floor((y - baseY) / ROW_H)));
-    reorderMessage(dragMsgId, idx);
-  };
-  const onSvgMouseUp = () => setDragMsgId(null);
+    const onMove = (ev: MouseEvent) => {
+      const dy = ev.clientY - drag.startY;
+      if (!drag.active && Math.abs(dy) < DRAG_THRESHOLD) return;
+      const svg = svgRef.current;
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      const yInSvg = ev.clientY - rect.top;
+      const raw = Math.floor((yInSvg - baseY + ROW_H / 2) / ROW_H);
+      const next = Math.max(0, Math.min(messages.length - 1, raw));
+      if (next === drag.targetIdx && drag.active) return;
+      setDrag({ ...drag, active: true, targetIdx: next });
+    };
+    const onUp = () => {
+      if (drag.active && drag.targetIdx !== drag.originalIdx) {
+        reorderMessage(drag.id, drag.targetIdx);
+      }
+      setDrag(null);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [drag, messages.length, reorderMessage]);
+
+  // Visual order during a drag: messages stay in model order, only the
+  // dragged row is virtually relocated. Real array isn't touched until mouseup.
+  const visualMessages = useMemo(() => {
+    if (!drag?.active) return messages;
+    const idx = messages.findIndex(m => m.id === drag.id);
+    if (idx < 0) return messages;
+    const next = messages.slice();
+    const [moved] = next.splice(idx, 1);
+    next.splice(drag.targetIdx, 0, moved);
+    return next;
+  }, [messages, drag]);
 
   // ── Render ──────────────────────────────────────────────────────────────
   const selectedMsg = selected ? messages.find(m => m.id === selected) : null;
@@ -346,10 +394,7 @@ export function SequenceEditor({
             <svg
               ref={svgRef}
               width={totalW} height={totalH}
-              style={{ display: 'block', cursor: dragMsgId ? 'grabbing' : 'default', userSelect: 'none' }}
-              onMouseMove={onSvgMouseMove}
-              onMouseUp={onSvgMouseUp}
-              onMouseLeave={onSvgMouseUp}
+              style={{ display: 'block', cursor: drag?.active ? 'grabbing' : 'default', userSelect: 'none' }}
             >
               <defs>
                 <pattern id="seqdots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
@@ -379,15 +424,20 @@ export function SequenceEditor({
                 );
               })}
 
-              {/* Messages (arrows + label rows) */}
-              {messages.map((msg, idx) => {
+              {/* Messages (arrows + label rows) — rendered in visual order
+                  so the dragged row previews its new slot without mutating
+                  the underlying messages array until the user releases. */}
+              {visualMessages.map((msg, idx) => {
                 const y = msgY(idx);
                 const fromX = actorX(msg.from);
                 const toX = actorX(msg.to);
                 const selectedHere = selected === msg.id;
+                const isDragging = drag?.active && drag.id === msg.id;
                 const isSelf = msg.from === msg.to;
                 const stroke = selectedHere ? INDIGO : t.arrow;
                 const dash = msg.style === 'dashed' ? '6,4' : undefined;
+                const cursor = drag?.active ? 'grabbing' : 'grab';
+                const groupOpacity = isDragging ? 0.85 : 1;
 
                 if (isSelf) {
                   const startX = fromX;
@@ -395,8 +445,8 @@ export function SequenceEditor({
                   const loopY = y - 6;
                   const d = `M ${startX} ${loopY} C ${startX + loopW} ${loopY}, ${startX + loopW} ${loopY + 24}, ${startX} ${loopY + 24}`;
                   return (
-                    <g key={msg.id} onMouseDown={(e) => onRowMouseDown(e, msg.id)} style={{ cursor: dragMsgId ? 'grabbing' : 'grab' }}>
-                      {selectedHere && (
+                    <g key={msg.id} onMouseDown={(e) => onRowMouseDown(e, msg.id)} style={{ cursor, opacity: groupOpacity }}>
+                      {(selectedHere || isDragging) && (
                         <rect x={SIDE_PAD - 8} y={y - 22} width={totalW - (SIDE_PAD - 8) * 2} height={ROW_H - 12} rx={10}
                           fill={INDIGO_SOFT} opacity={isDark ? 0.18 : 0.6} />
                       )}
@@ -410,8 +460,8 @@ export function SequenceEditor({
 
                 const labelX = (fromX + toX) / 2;
                 return (
-                  <g key={msg.id} onMouseDown={(e) => onRowMouseDown(e, msg.id)} style={{ cursor: dragMsgId ? 'grabbing' : 'grab' }}>
-                    {selectedHere && (
+                  <g key={msg.id} onMouseDown={(e) => onRowMouseDown(e, msg.id)} style={{ cursor, opacity: groupOpacity }}>
+                    {(selectedHere || isDragging) && (
                       <rect x={SIDE_PAD - 8} y={y - 22} width={totalW - (SIDE_PAD - 8) * 2} height={ROW_H - 12} rx={10}
                         fill={INDIGO_SOFT} opacity={isDark ? 0.18 : 0.6} />
                     )}
