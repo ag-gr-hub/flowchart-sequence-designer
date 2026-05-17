@@ -62,6 +62,12 @@ Versioning: [Semantic Versioning](https://semver.org/).
   `ContextMenu.tsx`, `hooks/useHistory.ts`, `hooks/useSystemTheme.ts`). No
   public API or visual change — the file is now ~770 lines and the render
   layer can be imported in isolation.
+- Further refactor: extracted three more canvas hooks —
+  `hooks/useCanvasWheel.ts` (cursor-anchored zoom), `hooks/useCanvasTouch.ts`
+  (pan/pinch/long-press), and `hooks/useElementSize.ts` (ResizeObserver
+  viewport tracking) — and added a `nodeDims(node, variant)` helper to
+  `layout.ts` that collapses the repeated `variant === 'question' ? ... : ...`
+  width/height ternary. `DiagramEditor.tsx` is now ~990 lines.
 
 ### Fixed
 - Node drag operations now push to the undo history. Previously the drag

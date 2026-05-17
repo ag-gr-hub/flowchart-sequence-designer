@@ -1,4 +1,4 @@
-import type { DiagramNode } from '../core/types.js';
+import type { DiagramNode, DiagramVariant } from '../core/types.js';
 
 // Fixed heights; widths are dynamic per-node.
 export const NODE_H = 48;
@@ -42,6 +42,15 @@ export function questionNodeW(node: DiagramNode): number {
 
 export function questionNodeH(answers: string[]): number {
   return Q_BASE_H + (answers.length === 0 ? 48 : Q_ANS_ROW_H);
+}
+
+/** Variant-aware width × height for a node, in canvas units. */
+export function nodeDims(node: DiagramNode, variant: DiagramVariant): { w: number; h: number } {
+  if (variant === 'question') {
+    const answers = (node.metadata?.answers as string[] | undefined) ?? [];
+    return { w: questionNodeW(node), h: questionNodeH(answers) };
+  }
+  return { w: nodeWidth(node.label), h: NODE_H };
 }
 
 /** Snap a value to the nearest grid step. */

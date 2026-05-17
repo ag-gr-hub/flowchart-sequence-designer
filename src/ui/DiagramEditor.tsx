@@ -8,12 +8,14 @@ import { ContextMenu, type CtxMenuState as CtxMenu } from './ContextMenu.js';
 import { NodeShape, QuestionNode, EdgeLine } from './render.js';
 import { useHistory } from './hooks/useHistory.js';
 import { useIsDark, usePrefersReducedMotion, useIsCoarsePointer } from './hooks/useSystemTheme.js';
+import { useCanvasWheel } from './hooks/useCanvasWheel.js';
+import { useCanvasTouch } from './hooks/useCanvasTouch.js';
+import { useElementSize } from './hooks/useElementSize.js';
 import {
   NODE_H,
   GRID,
   nodeWidth,
-  questionNodeW,
-  questionNodeH,
+  nodeDims,
   snap,
   bezierPath,
 } from './layout.js';
@@ -132,7 +134,6 @@ function FlowchartEditor({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [navOpen, setNavOpen] = useState(true);
-  const [viewport, setViewport] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [announcement, setAnnouncement] = useState('');
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -143,18 +144,7 @@ function FlowchartEditor({
   const portR = isCoarse ? 9 : 6;
 
   // Track the SVG element size for the minimap viewport overlay.
-  useEffect(() => {
-    if (!svgRef.current || typeof ResizeObserver === 'undefined') return;
-    const el = svgRef.current;
-    const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect();
-      setViewport({ w: r.width, h: r.height });
-    });
-    ro.observe(el);
-    const r = el.getBoundingClientRect();
-    setViewport({ w: r.width, h: r.height });
-    return () => ro.disconnect();
-  }, []);
+  const viewport = useElementSize(svgRef);
 
   const t = useMemo<ThemeColors>(
     () => ({ ...(isDark ? darkTheme : lightTheme), ...(themeOverrides ?? {}) }),
@@ -170,8 +160,7 @@ function FlowchartEditor({
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const n of model.nodes) {
       const nx = n.x ?? 0, ny = n.y ?? 0;
-      const nw = variant === 'question' ? questionNodeW(n) : nodeWidth(n.label);
-      const nh = variant === 'question' ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
+      const { w: nw, h: nh } = nodeDims(n, variant);
       minX = Math.min(minX, nx); minY = Math.min(minY, ny);
       maxX = Math.max(maxX, nx + nw); maxY = Math.max(maxY, ny + nh);
     }
@@ -187,8 +176,7 @@ function FlowchartEditor({
     const node = model.nodes.find(n => n.id === nodeId);
     if (!node || !svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
-    const nw = variant === 'question' ? questionNodeW(node) : nodeWidth(node.label);
-    const nh = variant === 'question' ? questionNodeH((node.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
+    const { w: nw, h: nh } = nodeDims(node, variant);
     const cx = (node.x ?? 0) + nw / 2;
     const cy = (node.y ?? 0) + nh / 2;
     const scale = Math.min(Math.max(transform.scale, 0.8), 1.4);
@@ -320,15 +308,15 @@ function FlowchartEditor({
           e.preventDefault();
           const origin = model.nodes.find(n => n.id === selected);
           if (!origin) return;
-          const ox = (origin.x ?? 0) + (variant === 'question' ? questionNodeW(origin) : nodeWidth(origin.label)) / 2;
-          const oy = (origin.y ?? 0) + (variant === 'question' ? questionNodeH((origin.metadata?.answers as string[] | undefined) ?? []) : NODE_H) / 2;
+          const od = nodeDims(origin, variant);
+          const ox = (origin.x ?? 0) + od.w / 2;
+          const oy = (origin.y ?? 0) + od.h / 2;
           const candidates = model.nodes
             .filter(n => n.id !== selected)
-            .map(n => ({
-              id: n.id,
-              x: (n.x ?? 0) + (variant === 'question' ? questionNodeW(n) : nodeWidth(n.label)) / 2,
-              y: (n.y ?? 0) + (variant === 'question' ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? []) : NODE_H) / 2,
-            }));
+            .map(n => {
+              const d = nodeDims(n, variant);
+              return { id: n.id, x: (n.x ?? 0) + d.w / 2, y: (n.y ?? 0) + d.h / 2 };
+            });
           const nextId = nearestInDirection(ox, oy, dirKey, candidates);
           if (nextId) {
             selectOne(nextId);
@@ -361,123 +349,12 @@ function FlowchartEditor({
     return { x: (clientX - rect.left - transform.x) / transform.scale, y: (clientY - rect.top - transform.y) / transform.scale };
   }, [transform]);
 
-  useEffect(() => {
-    const el = svgRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const rect = el.getBoundingClientRect();
-      const px = e.clientX - rect.left, py = e.clientY - rect.top;
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      setTransform(tr => {
-        const scale = Math.min(3, Math.max(0.15, tr.scale * delta));
-        return { scale, x: px - (px - tr.x) * (scale / tr.scale), y: py - (py - tr.y) * (scale / tr.scale) };
-      });
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+  useCanvasWheel(svgRef, setTransform);
+
+  const onCanvasLongPress = useCallback((x: number, y: number) => {
+    setCtxMenu({ x, y, nodeId: null });
   }, []);
-
-  // Touch: single-finger pan on empty canvas; two-finger pinch zoom anywhere.
-  // Node drag and live-edge drag stay on mouse handlers (touch on nodes maps
-  // through React synthetic events naturally for the down/up lifecycle).
-  useEffect(() => {
-    const el = svgRef.current;
-    if (!el) return;
-    let touchPan: { ox: number; oy: number; tx: number; ty: number } | null = null;
-    let pinch: { dist: number; cx: number; cy: number; scale: number; tx: number; ty: number } | null = null;
-    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-    let longPressStart: { x: number; y: number } | null = null;
-    let longPressFired = false;
-
-    const dist = (a: Touch, b: Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-
-    const cancelLongPress = () => {
-      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-      longPressStart = null;
-    };
-
-    const onStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        cancelLongPress();
-        const [a, b] = [e.touches[0], e.touches[1]];
-        const rect = el.getBoundingClientRect();
-        pinch = {
-          dist: dist(a, b),
-          cx: (a.clientX + b.clientX) / 2 - rect.left,
-          cy: (a.clientY + b.clientY) / 2 - rect.top,
-          scale: transform.scale, tx: transform.x, ty: transform.y,
-        };
-        touchPan = null;
-        return;
-      }
-      if (e.touches.length === 1) {
-        const target = e.target as SVGElement | null;
-        const t0 = e.touches[0];
-        longPressFired = false;
-        longPressStart = { x: t0.clientX, y: t0.clientY };
-        // Schedule the long-press regardless of target — fires the same ctx
-        // menu as a right-click. Cancelled by significant movement or by an
-        // early touchend below.
-        longPressTimer = setTimeout(() => {
-          if (!longPressStart) return;
-          longPressFired = true;
-          touchPan = null;
-          setCtxMenu({ x: longPressStart.x, y: longPressStart.y, nodeId: null });
-        }, 550);
-        // Only start a pan when the touch begins on the background pattern or the SVG itself.
-        if (target?.dataset.bg !== '1' && target !== el) return;
-        touchPan = { ox: t0.clientX, oy: t0.clientY, tx: transform.x, ty: transform.y };
-      }
-    };
-    const onMove = (e: TouchEvent) => {
-      if (pinch && e.touches.length === 2) {
-        e.preventDefault();
-        const [a, b] = [e.touches[0], e.touches[1]];
-        const ratio = dist(a, b) / pinch.dist;
-        const scale = Math.min(3, Math.max(0.15, pinch.scale * ratio));
-        setTransform({
-          scale,
-          x: pinch.cx - (pinch.cx - pinch.tx) * (scale / pinch.scale),
-          y: pinch.cy - (pinch.cy - pinch.ty) * (scale / pinch.scale),
-        });
-        return;
-      }
-      if (e.touches.length === 1) {
-        const t0 = e.touches[0];
-        if (longPressStart && (Math.abs(t0.clientX - longPressStart.x) > 8 || Math.abs(t0.clientY - longPressStart.y) > 8)) {
-          cancelLongPress();
-        }
-        if (touchPan) {
-          e.preventDefault();
-          setTransform(tr => ({ ...tr, x: touchPan!.tx + (t0.clientX - touchPan!.ox), y: touchPan!.ty + (t0.clientY - touchPan!.oy) }));
-        }
-      }
-    };
-    const onEnd = (e: TouchEvent) => {
-      cancelLongPress();
-      // Swallow the tap that immediately follows a fired long-press so the
-      // synthetic click doesn't dismiss the menu we just opened.
-      if (longPressFired) {
-        e.preventDefault();
-        longPressFired = false;
-      }
-      if (e.touches.length === 0) { touchPan = null; pinch = null; }
-      if (e.touches.length === 1) pinch = null;
-    };
-    el.addEventListener('touchstart', onStart, { passive: false });
-    el.addEventListener('touchmove', onMove, { passive: false });
-    el.addEventListener('touchend', onEnd);
-    el.addEventListener('touchcancel', onEnd);
-    return () => {
-      cancelLongPress();
-      el.removeEventListener('touchstart', onStart);
-      el.removeEventListener('touchmove', onMove);
-      el.removeEventListener('touchend', onEnd);
-      el.removeEventListener('touchcancel', onEnd);
-    };
-  }, [transform.scale, transform.x, transform.y]);
+  useCanvasTouch(svgRef, { transform, setTransform, onLongPress: onCanvasLongPress });
 
   const onPortMouseDown = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
@@ -608,15 +485,13 @@ function FlowchartEditor({
       } else {
         const dragged = model.nodes.find(n => n.id === drag.nodeId);
         if (!dragged) return;
-        const dW = variant === 'question' ? questionNodeW(dragged) : nodeWidth(dragged.label);
-        const dH = variant === 'question' ? questionNodeH((dragged.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
+        const { w: dW, h: dH } = nodeDims(dragged, variant);
         const others = model.nodes
           .filter(n => n.id !== drag.nodeId)
-          .map(n => ({
-            x: n.x ?? 0, y: n.y ?? 0,
-            w: variant === 'question' ? questionNodeW(n) : nodeWidth(n.label),
-            h: variant === 'question' ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? []) : NODE_H,
-          }));
+          .map(n => {
+            const d = nodeDims(n, variant);
+            return { x: n.x ?? 0, y: n.y ?? 0, w: d.w, h: d.h };
+          });
         const snapResult = findSiblingSnap({ x: dx, y: dy, w: dW, h: dH }, others);
         setAlignGuides(snapResult.guideX || snapResult.guideY ? { x: snapResult.guideX, y: snapResult.guideY } : null);
         const updated = { ...model, nodes: model.nodes.map(n => n.id === drag.nodeId ? { ...n, x: snapResult.x, y: snapResult.y } : n) };
@@ -646,8 +521,7 @@ function FlowchartEditor({
         const hits = new Set<string>(boxSel.additive ? selectedSet : []);
         for (const n of model.nodes) {
           const nx = n.x ?? 0, ny = n.y ?? 0;
-          const nw = variant === 'question' ? questionNodeW(n) : nodeWidth(n.label);
-          const nh = variant === 'question' ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
+          const { w: nw, h: nh } = nodeDims(n, variant);
           if (nx + nw >= cx1 && nx <= cx2 && ny + nh >= cy1 && ny <= cy2) hits.add(n.id);
         }
         const arr = Array.from(hits);
@@ -949,8 +823,7 @@ function FlowchartEditor({
               {model.nodes.map((node, idx) => {
                 const isHovered = hoveredId === node.id;
                 const isQuestion = variant === 'question';
-                const nW = isQuestion ? questionNodeW(node) : nodeWidth(node.label);
-                const nH = isQuestion ? questionNodeH((node.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
+                const { w: nW, h: nH } = nodeDims(node, variant);
                 const isSelected = selectedSet.has(node.id);
 
                 return (
@@ -1042,11 +915,7 @@ function FlowchartEditor({
               transform={transform}
               isDark={isDark}
               accentColor={acc.color}
-              measureNode={(n) => {
-                const w = variant === 'question' ? questionNodeW(n) : nodeWidth(n.label);
-                const h = variant === 'question' ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? []) : NODE_H;
-                return { w, h };
-              }}
+              measureNode={(n) => nodeDims(n, variant)}
               onCenterOn={(cx, cy) => {
                 setTransform(tr => ({ ...tr, x: viewport.w / 2 - cx * tr.scale, y: viewport.h / 2 - cy * tr.scale }));
               }}
