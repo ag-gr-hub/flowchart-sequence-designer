@@ -5,6 +5,8 @@ import { SequenceCanvas } from './SequenceCanvas.js';
 import { useEditorTheme } from './hooks/useEditorTheme.js';
 import { useExporters } from './hooks/useExporters.js';
 import { useImporter } from './hooks/useImporter.js';
+import { useToast } from './hooks/useToast.js';
+import { ToastContainer } from './ToastContainer.js';
 import { presetSequenceModel } from './presets.js';
 import { nextId } from '../core/ids.js';
 import { useEditorKeyboard, type KeyCommand } from './hooks/useEditorKeyboard.js';
@@ -151,6 +153,7 @@ export function SequenceEditor({
   themeOverrides,
 }: SequenceEditorProps) {
   const [model, setModel] = useState<DiagramModel>(() => ensureSequenceModel(initialModel));
+  const { toasts, showToast, dismissToast } = useToast();
   const [selected, setSelected] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -283,10 +286,12 @@ export function SequenceEditor({
   useEditorKeyboard(keyCommands, [undo, redo, selected]);
 
   // ── Export / import ─────────────────────────────────────────────────────
-  const handleExport = useExporters(model, onExport, 'sequence');
+  const handleExport = useExporters(model, onExport, 'sequence', (msg) => showToast(msg, 'success'));
   const handleImport = useImporter(applyAndPush, {
     expectedType: 'sequence',
     transform: ensureSequenceModel,
+    onSuccess: (msg) => showToast(msg, 'success'),
+    onError: (msg) => showToast(msg, 'error'),
   });
 
   // ── Drag-to-reorder ─────────────────────────────────────────────────────
@@ -337,10 +342,24 @@ export function SequenceEditor({
   const selectedMsg = selected ? messages.find(m => m.id === selected) : null;
 
   return (
-    <div style={{
+   <div className="fsd-seq-editor" style={{
       display: 'flex', flexDirection: 'column', height, width: '100%',
       fontFamily: 'ui-sans-serif,system-ui,sans-serif', background: t.ctrlsBg,
+      position: 'relative',
     }}>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <style>{`
+        .fsd-seq-editor [role="button"]:focus-visible {
+          outline: 2px solid ${t.actorText};
+          outline-offset: 2px;
+        }
+        .fsd-seq-editor button:focus-visible,
+        .fsd-seq-editor input:focus-visible {
+          outline: 2px solid ${t.actorText};
+          outline-offset: 2px;
+          border-radius: 4px;
+        }
+      `}</style>
       <Toolbar onExport={handleExport} onImport={allowImport ? handleImport : undefined} allowedExports={allowedExports} allowImport={allowImport} />
 
       {/* Controls */}

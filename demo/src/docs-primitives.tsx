@@ -1,6 +1,13 @@
+/**
+ * Demo-site documentation primitives.
+ *
+ * Shared UI helpers used across all demo pages (DocsPage, DiagramGuides, etc.)
+ * to render consistent syntax-highlighted code, tables, headings, and
+ * keyboard-shortcut badges. All styling is inline (dark-theme only).
+ */
 import { useState } from 'react';
 
-// ── Inline syntax-highlight token helpers ────────────────────────────────────
+/** Syntax-highlight token helpers — wrap text in a colored span. */
 export const KW = (s: string) => <span style={{ color: '#c792ea' }}>{s}</span>;
 export const STR = (s: string) => <span style={{ color: '#c3e88d' }}>{s}</span>;
 export const CMT = (s: string) => <span style={{ color: '#546e7a', fontStyle: 'italic' }}>{s}</span>;
@@ -9,6 +16,7 @@ export const TY = (s: string) => <span style={{ color: '#ffcb6b' }}>{s}</span>;
 export const OP = (s: string) => <span style={{ color: '#89ddff' }}>{s}</span>;
 export const NUM = (s: string) => <span style={{ color: '#f78c6c' }}>{s}</span>;
 
+/** Copy-to-clipboard button positioned in the top-right of a code block. */
 export function CopyBtn({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -26,6 +34,7 @@ export function CopyBtn({ text }: { text: string }) {
   );
 }
 
+/** Fenced code block with syntax-highlighted children and a Copy button. */
 export function Code({ children, raw }: { children: React.ReactNode; raw: string }) {
   return (
     <div style={{ position: 'relative', margin: '12px 0 24px' }}>
@@ -42,6 +51,7 @@ export function Code({ children, raw }: { children: React.ReactNode; raw: string
   );
 }
 
+/** Documentation section with an anchor `id`, heading, and optional badge. */
 export function Section({ id, title, badge, children }: { id: string; title: string; badge?: string; children: React.ReactNode }) {
   return (
     <section id={id} style={{ marginBottom: 56 }}>
@@ -59,14 +69,17 @@ export function Section({ id, title, badge, children }: { id: string; title: str
   );
 }
 
+/** Paragraph with muted text. */
 export function P({ children }: { children: React.ReactNode }) {
   return <p style={{ color: '#94a3b8', lineHeight: 1.75, marginBottom: 12, fontSize: 14 }}>{children}</p>;
 }
 
+/** Sub-heading (h3) for use inside a Section. */
 export function H3({ children }: { children: React.ReactNode }) {
   return <h3 style={{ fontSize: 14, fontWeight: 600, color: '#cbd5e1', margin: '20px 0 8px' }}>{children}</h3>;
 }
 
+/** Numbered step list. */
 export function Steps({ items }: { items: React.ReactNode[] }) {
   return (
     <ol style={{ color: '#94a3b8', lineHeight: 1.75, fontSize: 14, paddingLeft: 22, marginBottom: 16 }}>
@@ -77,6 +90,7 @@ export function Steps({ items }: { items: React.ReactNode[] }) {
   );
 }
 
+/** Two-column "Goal → How" table for quick-reference guides. */
 export function HowToTable({ rows }: { rows: [string, React.ReactNode][] }) {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}>
@@ -98,6 +112,7 @@ export function HowToTable({ rows }: { rows: [string, React.ReactNode][] }) {
   );
 }
 
+/** Props-table row: name, type, default, description — used for API reference. */
 export function PropRow({ name, type, def, desc }: { name: string; type: string; def?: string; desc: string }) {
   return (
     <tr>
@@ -128,6 +143,7 @@ export function linkPillStyle(bg: string, color: string): React.CSSProperties {
   };
 }
 
+/** Keyboard shortcut badge styled as a physical key cap. */
 export function Kbd({ children }: { children: React.ReactNode }) {
   return (
     <kbd style={{

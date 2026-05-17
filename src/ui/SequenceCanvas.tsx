@@ -210,8 +210,12 @@ export function SequenceCanvas(props: SequenceCanvasProps) {
               <text
                 x={x} y={HEADER_PAD + HEADER_H / 2 + 4} textAnchor="middle"
                 fontSize={13} fontWeight={700} fill={t.actorText}
+                role="button"
+                tabIndex={0}
+                aria-label={`Actor ${name} — press Enter or F2 to rename`}
                 style={STYLE_SEQ_ACTOR_TEXT}
                 onDoubleClick={() => setEditingId(name)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); setEditingId(name); } }}
               >
                 {name}
               </text>

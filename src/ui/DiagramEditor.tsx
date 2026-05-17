@@ -13,6 +13,8 @@ import { useElementSize } from './hooks/useElementSize.js';
 import { useEditorTheme } from './hooks/useEditorTheme.js';
 import { useExporters } from './hooks/useExporters.js';
 import { useImporter } from './hooks/useImporter.js';
+import { useToast } from './hooks/useToast.js';
+import { ToastContainer } from './ToastContainer.js';
 import { useEditorKeyboard, type KeyCommand } from './hooks/useEditorKeyboard.js';
 import {
   NODE_H,
@@ -121,6 +123,7 @@ function FlowchartEditor({
   const notify = useCallback((m: DiagramModel) => onChange?.(m), [onChange]);
   const history = useHistory<DiagramModel>(base, notify);
   const { state: model, apply: applyModel, applyAndPush, undo, redo } = history;
+  const { toasts, showToast, dismissToast } = useToast();
   const [transform, setTransform] = useState<Transform>({ x: 60, y: 60, scale: 1 });
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedSet, setSelectedSet] = useState<Set<string>>(() => new Set());
@@ -671,7 +674,7 @@ function FlowchartEditor({
     applyAndPush(updated);
   };
 
-  const handleExport = useExporters(model, onExport, 'diagram');
+  const handleExport = useExporters(model, onExport, 'diagram', (msg) => showToast(msg, 'success'));
 
   const positionFlowchartNodes = useCallback((m: DiagramModel): DiagramModel => ({
     ...m,
@@ -681,7 +684,11 @@ function FlowchartEditor({
       y: n.y ?? snap(80 + Math.floor(i / 4) * 140),
     })),
   }), []);
-  const handleImport = useImporter(applyAndPush, { transform: positionFlowchartNodes });
+  const handleImport = useImporter(applyAndPush, {
+    transform: positionFlowchartNodes,
+    onSuccess: (msg) => showToast(msg, 'success'),
+    onError: (msg) => showToast(msg, 'error'),
+  });
 
   const acc = variantAccent(variant, isDark);
   const variantLabel = variant === 'question' ? 'Question' : variant === 'journey' ? 'Step' : 'Node';
@@ -690,7 +697,8 @@ function FlowchartEditor({
   const amberArrow = isDark ? C.amberDark : C.amber;
 
   return (
-    <div className="fsd-editor" style={{ display: 'flex', flexDirection: 'column', height, width: '100%', fontFamily: 'ui-sans-serif,system-ui,sans-serif', boxSizing: 'border-box', background: t.ctrlsBg }}>
+    <div className="fsd-editor" style={{ display: 'flex', flexDirection: 'column', height, width: '100%', fontFamily: 'ui-sans-serif,system-ui,sans-serif', boxSizing: 'border-box', background: t.ctrlsBg, position: 'relative' }}>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <style>{`
         .fsd-editor button:focus-visible,
         .fsd-editor input:focus-visible,
@@ -700,6 +708,10 @@ function FlowchartEditor({
           outline: 2px solid ${acc.color};
           outline-offset: 2px;
           border-radius: 6px;
+        }
+        .fsd-editor svg [role="button"]:focus-visible {
+          outline: 2px solid ${acc.color};
+          outline-offset: 3px;
         }
         .fsd-editor svg[role="application"]:focus-visible {
           outline: 2px solid ${acc.color};

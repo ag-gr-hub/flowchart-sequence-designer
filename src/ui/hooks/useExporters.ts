@@ -18,11 +18,13 @@ import { toSVG, toPNG } from '../../exporters/svg.js';
  * @param onExport  Optional caller-supplied sink. If omitted, a download is triggered.
  * @param filename  Base filename for the download (default `"diagram"`). Diagram and
  *                  sequence editors override to `"diagram"` / `"sequence"` respectively.
+ * @param onSuccess Optional callback fired after a successful export (e.g., for toast).
  */
 export function useExporters(
   model: DiagramModel,
   onExport: ((format: ExportFormat, content: string | Blob) => void) | undefined,
   filename: string = 'diagram',
+  onSuccess?: (message: string) => void,
 ): (format: ExportFormat) => Promise<void> {
   return useCallback(async (format: ExportFormat) => {
     let content: string | Blob;
@@ -34,7 +36,7 @@ export function useExporters(
       case 'png': content = await toPNG(model); break;
       default: return;
     }
-    if (onExport) { onExport(format, content); return; }
+    if (onExport) { onExport(format, content); onSuccess?.(`Exported as ${format.toUpperCase()}`); return; }
     const url = content instanceof Blob
       ? URL.createObjectURL(content)
       : URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
@@ -43,5 +45,6 @@ export function useExporters(
     a.download = `${filename}.${format === 'plantuml' ? 'puml' : format}`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [model, onExport, filename]);
+    onSuccess?.(`Downloaded ${a.download}`);
+  }, [model, onExport, filename, onSuccess]);
 }
