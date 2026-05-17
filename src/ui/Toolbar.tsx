@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ImportDialog } from './ImportDialog.js';
 import type { ExportFormat } from '../core/types.js';
 
 const ALL_FORMATS: { key: ExportFormat; label: string }[] = [
@@ -17,14 +18,10 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ onExport, onImport, allowedExports, allowImport = true }: ToolbarProps) {
+  const [importOpen, setImportOpen] = useState(false);
   const formats = allowedExports
     ? ALL_FORMATS.filter(f => allowedExports.includes(f.key))
     : ALL_FORMATS;
-
-  const handleImport = () => {
-    const text = prompt('Paste Mermaid or JSON:');
-    if (text && onImport) onImport(text);
-  };
 
   return (
     <div style={bar}>
@@ -39,7 +36,7 @@ export function Toolbar({ onExport, onImport, allowedExports, allowImport = true
 
       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
         {allowImport && onImport && (
-          <button onClick={handleImport} style={ghostBtn}>
+          <button onClick={() => setImportOpen(true)} style={ghostBtn}>
             ↑ Import
           </button>
         )}
@@ -54,6 +51,13 @@ export function Toolbar({ onExport, onImport, allowedExports, allowImport = true
           </>
         )}
       </div>
+      {onImport && (
+        <ImportDialog
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          onImport={onImport}
+        />
+      )}
     </div>
   );
 }
