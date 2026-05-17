@@ -484,8 +484,7 @@ export function SequenceEditor({
                     {editingId === name ? (
                       <foreignObject x={x - w / 2 + 8} y={HEADER_PAD + 16} width={w - 16} height={32}>
                         <input
-                          // @ts-ignore
-                          xmlns="http://www.w3.org/1999/xhtml" autoFocus
+                          autoFocus
                           defaultValue={name}
                           onBlur={(e) => { renameActor(name, e.currentTarget.value.trim()); setEditingId(null); }}
                           onKeyDown={(e) => {

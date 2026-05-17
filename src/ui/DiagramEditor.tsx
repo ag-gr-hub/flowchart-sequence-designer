@@ -851,8 +851,7 @@ function FlowchartEditor({
                         {editingId === node.id ? (
                           <foreignObject x={6} y={6} width={nW - 12} height={NODE_H - 12}>
                             <input
-                              // @ts-ignore
-                              xmlns="http://www.w3.org/1999/xhtml" autoFocus
+                              autoFocus
                               value={editLabel}
                               onChange={e => setEditLabel(e.target.value)}
                               onBlur={commitEdit}
