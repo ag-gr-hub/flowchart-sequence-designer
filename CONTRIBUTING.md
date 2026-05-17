@@ -23,6 +23,7 @@ bun install
 | `bun run lint` | ESLint over `src/` (install dev deps first — see below) |
 | `bun run format` | Prettier-format `src/**/*.{ts,tsx,json}` |
 | `bun run format:check` | Check formatting without writing |
+| `bun run analyze` | Bundle-size breakdown per entry; writes `dist/.metafile-*.json` |
 
 ### Optional lint/format tooling
 
