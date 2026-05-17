@@ -59,6 +59,8 @@ export const darkTheme: ThemeColors = {
 
 export const ACCENT = {
   indigo: '#4f46e5', indigoGlow: 'rgba(79,70,229,0.22)',
+  indigoLight: '#818cf8', indigoText: '#a5b4fc',
+  indigoSoftBg: 'rgba(79,70,229,0.15)', indigoSoftBorder: 'rgba(79,70,229,0.3)',
   amber: '#d97706', amberLight: '#fef3c7', amberBorder: '#fcd34d', amberGlow: 'rgba(217,119,6,0.25)',
   amberDark: '#fbbf24', amberDarkLight: 'rgba(251,191,36,0.12)', amberDarkBorder: 'rgba(251,191,36,0.3)',
   emerald: '#059669', emeraldLight: '#ecfdf5', emeraldGlow: 'rgba(5,150,105,0.2)',
