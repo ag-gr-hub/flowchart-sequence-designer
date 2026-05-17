@@ -5,6 +5,22 @@ A TypeScript-first Bun/npm package for building and editing flowchart and sequen
 **🔗 [Live demo & developer docs →](https://ag-gr-hub.github.io/flowchart-sequence-designer/)**
 Open it to drive the editor, switch variants (Flowchart / Question / Journey / Sequence), and copy the same API snippets shown below straight from the docs tab. Every variant boots with a working sample diagram so you can poke without any setup.
 
+## Quick start
+
+```tsx
+import { DiagramEditor } from 'flowchart-sequence-designer/ui';
+
+export default function App() {
+  return <DiagramEditor height={520} onChange={(m) => console.log(m)} />;
+}
+```
+
+That's it — no provider, no theme setup, no required props. The editor
+mounts with a sample diagram, a working toolbar, undo/redo, drag-to-pan,
+scroll-to-zoom, and export buttons for Mermaid / PlantUML / JSON / SVG /
+PNG. Pass `theme="dark"` or `themeOverrides={…}` to brand-match, or
+`initialModel={emptyModel('flowchart')}` to start blank.
+
 ## Install
 
 ```bash
@@ -99,6 +115,50 @@ const model2 = fromJSON(jsonString);
 ```
 
 Round-trip fidelity: `fromMermaid(diagram.toMermaid())` produces an equivalent model.
+
+---
+
+### Exporter / importer round-trip rules
+
+The five export formats trade fidelity for portability. Use this table to
+pick the one that matches what you need:
+
+| Format | Round-trip | Preserved | Dropped or lossy |
+|---|---|---|---|
+| **JSON** | ✅ full | every field — `variant`, `metadata`, `waypoint`, x/y positions, edge arrowheads, message order | nothing |
+| **Mermaid (flowchart)** | partial | node shapes (`[]` `{}` `(())` `[/]`), labels, edge connectors (`-->`, `-.->`, `---`, `-.-`), edge labels, `subgraph` → `metadata.group` | positions, `waypoint`, `metadata.answers`, `variant`. Dotted edges collapse to dashed. |
+| **Mermaid (sequence)** | partial | actor order, message arrows (`->>`, `-->>`), labels | message metadata, styling overrides |
+| **PlantUML (flowchart)** | export-only | edge styles (`-->` / `-[dashed]->` / `-[dotted]->`), labels, node id | shape distinctions (PlantUML state-diagram syntax is coarser), positions, `metadata`, `variant` |
+| **PlantUML (sequence)** | export-only | actor order, message style (`->`, `-->`), labels | – |
+| **SVG** | export-only (rendered) | full visual parity with the canvas — same dot grid, same edge curves, same node styling | – |
+| **PNG** | export-only (rendered, **browser-only**) | same as SVG, rasterized at `devicePixelRatio` | – |
+
+If you need 100% round-trip fidelity, use JSON. If you need a format that
+GitHub renders inline in markdown, use Mermaid. If you need a polished
+image for documentation, use SVG or PNG.
+
+---
+
+### Presets
+
+```ts
+import {
+  presetFlowchartModel,
+  presetSequenceModel,
+  emptyModel,
+} from 'flowchart-sequence-designer/ui';
+
+presetFlowchartModel('flowchart')  // 6-node order flow with one decision
+presetFlowchartModel('question')   // 1-question / 3-answer router
+presetFlowchartModel('journey')    // 5-step onboarding sequence
+presetSequenceModel()              // 3-actor login handshake
+
+emptyModel('flowchart')            // { type:'flowchart', variant:'flowchart', nodes:[], edges:[] }
+emptyModel('flowchart', 'journey') // same with variant: 'journey'
+emptyModel('sequence')             // { type:'sequence', nodes:[], edges:[], actors:[], messages:[] }
+```
+
+All presets return a deep clone — mutate the result freely.
 
 ---
 
@@ -265,6 +325,43 @@ Every field on `ThemeColors` (canvas, nodeFill, nodeStroke, edgeColor, panelBg,
 inputBg, …) is overridable. Sequence diagrams accept the same prop with a
 slightly different shape — `Partial<SequenceThemeColors>` — also exported from
 `flowchart-sequence-designer/ui`.
+
+---
+
+### SequenceEditor
+
+`<DiagramEditor>` auto-delegates to `<SequenceEditor>` when handed a
+sequence model, but you can also mount it directly to avoid the
+type-check redirect:
+
+```tsx
+import { SequenceEditor, presetSequenceModel } from 'flowchart-sequence-designer/ui';
+
+<SequenceEditor
+  initialModel={presetSequenceModel()}
+  height={520}
+  theme="dark"
+  onChange={(m) => save(m)}
+/>
+```
+
+**SequenceEditor props** (mirrors `DiagramEditorProps` minus `variant`):
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `initialModel` | `DiagramModel` | preset | Must have `type: 'sequence'`. Falls back to the preset if a non-sequence model is passed. |
+| `onChange` | `(m: DiagramModel) => void` | – | Fires on every committed mutation. |
+| `onExport` | `(format, content) => void` | download | Receives string for text formats, `Blob` for PNG. |
+| `height` | `number \| string` | `600` | Any CSS height. |
+| `allowedExports` | `ExportFormat[]` | all | Whitelist of toolbar export buttons. |
+| `allowImport` | `boolean` | `true` | Show the Import button. |
+| `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | `auto` follows OS `prefers-color-scheme`. |
+| `themeOverrides` | `Partial<SequenceThemeColors>` | – | Per-property palette overrides. |
+
+**Sequence-specific interactions:**
+- Drag a message row by its handle to reorder messages.
+- Double-click a message label to rename inline.
+- Drag the column header of an actor to reorder lifelines.
 
 ---
 
