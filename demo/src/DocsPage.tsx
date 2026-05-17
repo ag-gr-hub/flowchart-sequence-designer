@@ -1,5 +1,5 @@
 import {
-  Section, P, Code, PropRow,
+  Section, P, Code, PropRow, HowToTable, Kbd,
   KW, STR, CMT, FN, TY, OP,
   inlineCode, thStyle, tdStyle, linkPillStyle,
 } from './docs-primitives';
@@ -25,7 +25,10 @@ const NAV: NavEntry[] = [
   { group: 'Reference' },
   { id: 'import', label: 'Import' },
   { id: 'export', label: 'Export formats' },
+  { id: 'presets', label: 'Presets' },
   { id: 'react-ui', label: 'React UI' },
+  { id: 'theming', label: 'Theming' },
+  { id: 'a11y', label: 'Accessibility & touch' },
   { id: 'shortcuts', label: 'Keyboard shortcuts' },
   { id: 'props', label: 'Component props' },
   { id: 'types', label: 'TypeScript types' },
@@ -260,6 +263,71 @@ diagram.toPNG()       // → Promise<Blob>  (browser only)`}>
             diagram.{FN('toSVG')}()       {CMT('// → string  (SVG markup)')}{'\n'}
             diagram.{FN('toPNG')}()       {CMT('// → Promise<Blob>  (browser only)')}
           </Code>
+
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#cbd5e1', marginBottom: 8, marginTop: 20 }}>Round-trip rules</h3>
+          <P>The five formats trade fidelity for portability. Use this table to pick the one that matches what you need.</P>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 20 }}>
+            <thead>
+              <tr style={{ background: '#0d1117' }}>
+                <th style={thStyle}>Format</th>
+                <th style={thStyle}>Round-trip</th>
+                <th style={thStyle}>Preserved</th>
+                <th style={thStyle}>Dropped</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['JSON', 'full', 'every field — variant, metadata, waypoint, x/y, arrowheads, message order', 'nothing'],
+                ['Mermaid (flowchart)', 'partial', 'shapes, labels, connectors (-->, -.->, ---, -.-), edge labels, subgraph → metadata.group', 'positions, waypoint, metadata.answers, variant. Dotted collapses to dashed.'],
+                ['Mermaid (sequence)', 'partial', 'actor order, message arrows (->>, -->>), labels', 'message metadata, styling overrides'],
+                ['PlantUML (flowchart)', 'export-only', 'edge styles (--> / -[dashed]-> / -[dotted]->), labels, node ids', 'shape distinctions, positions, metadata, variant'],
+                ['PlantUML (sequence)', 'export-only', 'actor order, message style (->, -->), labels', '—'],
+                ['SVG', 'export-only (rendered)', 'full visual parity with the canvas', '—'],
+                ['PNG (browser-only)', 'export-only (rendered)', 'same as SVG, rasterized at devicePixelRatio', '—'],
+              ].map(([fmt, rt, kept, dropped]) => (
+                <tr key={fmt}>
+                  <td style={{ ...tdStyle, fontFamily: 'ui-monospace,monospace', color: '#a5b4fc', whiteSpace: 'nowrap' }}>{fmt}</td>
+                  <td style={{ ...tdStyle, fontWeight: 500, color: '#cbd5e1' }}>{rt}</td>
+                  <td style={tdStyle}>{kept}</td>
+                  <td style={tdStyle}>{dropped}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <P>If you need 100% fidelity, use JSON. If you need a format GitHub renders inline in markdown, use Mermaid. If you need a polished image for docs, use SVG or PNG.</P>
+        </Section>
+
+        {/* ── Presets ── */}
+        <Section id="presets" title="Presets & empty models">
+          <P>The editor mounts with a real working diagram so consumers immediately see styled nodes and edges. Reach for <code style={inlineCode}>emptyModel(type)</code> to start blank, or call a <code style={inlineCode}>preset*Model()</code> helper from your own code to hydrate the same example data.</P>
+          <Code raw={`import {
+  presetFlowchartModel,
+  presetSequenceModel,
+  emptyModel,
+} from 'flowchart-sequence-designer/ui';
+
+presetFlowchartModel('flowchart')  // 6-node order flow with one decision
+presetFlowchartModel('question')   // 1-question / 3-answer router
+presetFlowchartModel('journey')    // 5-step onboarding sequence
+presetSequenceModel()              // 3-actor login handshake
+
+emptyModel('flowchart')                  // blank flowchart
+emptyModel('flowchart', 'journey')       // blank journey-variant flowchart
+emptyModel('sequence')                   // blank sequence diagram`}>
+            {KW('import')} {'{'}{'\n'}
+            {'  '}{FN('presetFlowchartModel')},{'\n'}
+            {'  '}{FN('presetSequenceModel')},{'\n'}
+            {'  '}{FN('emptyModel')},{'\n'}
+            {'}'} {KW('from')} {STR("'flowchart-sequence-designer/ui'")};{'\n\n'}
+            {FN('presetFlowchartModel')}({STR("'flowchart'")})  {CMT('// 6-node order flow')}{'\n'}
+            {FN('presetFlowchartModel')}({STR("'question'")})   {CMT('// 1-question / 3-answer router')}{'\n'}
+            {FN('presetFlowchartModel')}({STR("'journey'")})    {CMT('// 5-step onboarding')}{'\n'}
+            {FN('presetSequenceModel')}()              {CMT('// 3-actor login handshake')}{'\n\n'}
+            {FN('emptyModel')}({STR("'flowchart'")}){'\n'}
+            {FN('emptyModel')}({STR("'flowchart'")}, {STR("'journey'")}){'\n'}
+            {FN('emptyModel')}({STR("'sequence'")})
+          </Code>
+          <P>All presets return a deep clone — mutate the result freely without affecting future calls.</P>
         </Section>
 
         {/* ── React UI ── */}
@@ -329,6 +397,92 @@ diagram.toPNG()       // → Promise<Blob>  (browser only)`}>
               ))}
             </tbody>
           </table>
+        </Section>
+
+        {/* ── Theming ── */}
+        <Section id="theming" title="Theming" badge="UI">
+          <P>The editor ships with a slate-based light/dark palette and follows the OS preference by default. To brand-match without forking, pass <code style={inlineCode}>themeOverrides</code> — a <code style={inlineCode}>Partial&lt;ThemeColors&gt;</code> shallow-merged on top of the resolved palette.</P>
+          <Code raw={`import { DiagramEditor, type ThemeColors } from 'flowchart-sequence-designer/ui';
+
+const brand: Partial<ThemeColors> = {
+  canvas: '#0b1020',
+  nodeFill: '#111a2e',
+  nodeStroke: '#2b3a5a',
+  nodeSelectedFill: '#1a2447',
+  edgeColor: '#7b8aa6',
+  textPrimary: '#e6edf7',
+};
+
+<DiagramEditor theme="dark" themeOverrides={brand} />;`}>
+            {KW('import')} {'{ '}{FN('DiagramEditor')}, {KW('type')} {TY('ThemeColors')}{' }'} {KW('from')} {STR("'flowchart-sequence-designer/ui'")};{'\n\n'}
+            {KW('const')} brand: {TY('Partial')}{OP('<')}{TY('ThemeColors')}{OP('>')} {OP('=')} {'{'}{'\n'}
+            {'  '}canvas: {STR("'#0b1020'")},{'\n'}
+            {'  '}nodeFill: {STR("'#111a2e'")},{'\n'}
+            {'  '}nodeStroke: {STR("'#2b3a5a'")},{'\n'}
+            {'  '}nodeSelectedFill: {STR("'#1a2447'")},{'\n'}
+            {'  '}edgeColor: {STR("'#7b8aa6'")},{'\n'}
+            {'  '}textPrimary: {STR("'#e6edf7'")},{'\n'}
+            {'};'}{'\n\n'}
+            {OP('<')}{TY('DiagramEditor')} theme{OP('=')}{STR('"dark"')} themeOverrides{OP('=')}{'{'}brand{'}'} {OP('/>')};
+          </Code>
+
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#cbd5e1', marginBottom: 8, marginTop: 16 }}>ThemeColors tokens (flowchart)</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 24 }}>
+            <thead>
+              <tr style={{ background: '#0d1117' }}>
+                <th style={thStyle}>Token group</th>
+                <th style={thStyle}>Members</th>
+                <th style={thStyle}>Where it shows up</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['Canvas', 'canvas, dot', 'Background + dot grid'],
+                ['Nodes', 'nodeFill, nodeStroke, nodeSelectedFill', 'Node body, border, selection tint'],
+                ['Edges', 'edgeColor', 'Edge stroke + arrowhead'],
+                ['Type ramp', 'textPrimary, textSecondary, textMuted', 'Labels, hints, secondary text'],
+                ['Chrome — panel', 'panelBg, panelBorder', 'Side panel surface'],
+                ['Chrome — controls', 'ctrlsBg, ctrlsBorder', 'Toolbar, zoom controls'],
+                ['Chrome — input', 'inputBg, inputBorder, inputText', 'Form fields in the side panel'],
+                ['Chrome — card', 'cardBg, cardBorder', 'Answer rows, branch rows'],
+                ['Chrome — section', 'sectionBorder', 'Divider between panel sections'],
+                ['Buttons', 'btnSecBg, btnSecText, shapeBtnBg, shapeBtnBorder', 'Secondary buttons, shape picker'],
+                ['Accents', 'addFormBg, bannerBg, labelText, hintText, statusBg', 'Add-form backdrop, validation banner'],
+              ].map(([g, m, w]) => (
+                <tr key={g}>
+                  <td style={{ ...tdStyle, fontWeight: 500, color: '#cbd5e1', whiteSpace: 'nowrap' }}>{g}</td>
+                  <td style={{ ...tdStyle, fontFamily: 'ui-monospace,monospace', color: '#a5b4fc' }}>{m}</td>
+                  <td style={tdStyle}>{w}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#cbd5e1', marginBottom: 8 }}>SequenceThemeColors tokens (sequence)</h3>
+          <P>The sequence editor accepts the same prop with a slightly different shape: <code style={inlineCode}>Partial&lt;SequenceThemeColors&gt;</code>. It drops node-specific tokens and adds <code style={inlineCode}>lifeline</code>, <code style={inlineCode}>arrow</code>, and <code style={inlineCode}>actorFill / actorStroke / actorText</code> for the swim-lane elements.</P>
+        </Section>
+
+        {/* ── Accessibility & touch ── */}
+        <Section id="a11y" title="Accessibility & touch" badge="UI">
+          <P>The editor is keyboard-first and screen-reader-aware. Every interaction reachable by mouse has a keyboard equivalent; every state change announces via a polite <code style={inlineCode}>aria-live</code> region.</P>
+
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#cbd5e1', marginBottom: 8, marginTop: 16 }}>Keyboard navigation</h3>
+          <P>Every node, port, and toolbar control is reachable with <Kbd>Tab</Kbd>; selection moves with <Kbd>Arrow</Kbd> keys (1 grid unit, or 4 with <Kbd>Shift</Kbd>); <Kbd>Alt+Arrow</Kbd> traverses the graph to the nearest connected neighbor in that direction. The focus ring is visible at all times — no <em>:focus</em> hiding. See <a href="#shortcuts" style={{ color: '#a5b4fc' }}>Keyboard shortcuts</a> for the full list.</P>
+
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#cbd5e1', marginBottom: 8 }}>ARIA roles</h3>
+          <P>The canvas is an <code style={inlineCode}>application</code> region with an <code style={inlineCode}>aria-label</code>; selection, add, and delete actions update an <code style={inlineCode}>aria-live="polite"</code> status region announced as "Selected {'{label}'}", "Added node {'{label}'}", etc. The toolbar uses native <code style={inlineCode}>{'<button>'}</code> elements with explicit labels.</P>
+
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#cbd5e1', marginBottom: 8 }}>Reduced motion</h3>
+          <P>The animated edge-flow dash honours <code style={inlineCode}>prefers-reduced-motion</code> — when set, the dash freezes and the canvas renders with no animation.</P>
+
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#cbd5e1', marginBottom: 8 }}>Touch</h3>
+          <HowToTable rows={[
+            ['Pan', <>One-finger drag on the canvas background.</>],
+            ['Zoom', <>Two-finger pinch.</>],
+            ['Context menu', <>Long-press (~550 ms) on the canvas or on a node.</>],
+            ['Larger hit targets', <>Port circles auto-enlarge on coarse-pointer devices (24 px vs. 14 px on mouse).</>],
+            ['Drag node', <>Press and drag the node body. The 8 px drag threshold lets you tap to select without nudging.</>],
+          ]} />
         </Section>
 
         {/* ── Shortcuts ── */}

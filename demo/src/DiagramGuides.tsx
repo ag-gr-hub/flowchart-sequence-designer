@@ -1,4 +1,4 @@
-import { Section, P, H3, Code, Steps, HowToTable, Kbd, inlineCode, KW, STR, CMT, FN, TY, OP } from './docs-primitives';
+import { Section, P, H3, Code, Steps, HowToTable, Kbd, PropRow, inlineCode, thStyle, KW, STR, CMT, FN, TY, OP } from './docs-primitives';
 
 // ── Flowchart ────────────────────────────────────────────────────────────────
 export function FlowchartGuide() {
@@ -224,6 +224,18 @@ const model = { ...onboarding.toJSON ? JSON.parse(onboarding.toJSON()) : onboard
 export function SequenceGuide() {
   return (
     <Section id="sequence-guide" title="Sequence" badge="actors + messages">
+      <div style={{
+        background: '#0d1421', border: '1px solid #1e293b', borderLeft: '3px solid #6366f1',
+        borderRadius: 6, padding: '12px 16px', marginBottom: 16,
+      }}>
+        <strong style={{ color: '#a5b4fc', fontSize: 13 }}>When to use which editor</strong>
+        <P>
+          <strong style={{ color: '#cbd5e1' }}>SequenceEditor</strong> for time-ordered actor conversations
+          (API calls, protocol handshakes, incident timelines). <strong style={{ color: '#cbd5e1' }}>DiagramEditor</strong>
+          for everything else — branching logic, journeys, generic flowcharts. <code style={inlineCode}>{'<DiagramEditor />'}</code> auto-delegates to <code style={inlineCode}>{'<SequenceEditor />'}</code> when you pass
+          a sequence model, so you can use either entry point.
+        </P>
+      </div>
       <P>
         A time-ordered conversation between actors. Each actor gets a vertical lifeline; each message is an
         arrow from one lifeline to another, stacked top-to-bottom. Reach for it whenever the
@@ -307,6 +319,28 @@ login.toMermaid();
         ['Export to PlantUML / Mermaid', <>Same toolbar exports as the flowchart editor. The exporters translate solid → sync (<code style={inlineCode}>{'->>'}</code>) and dashed → async response (<code style={inlineCode}>{'-->>'}</code>).</>],
         ['Move a sequence into a flowchart (or vice-versa)', <>You can't — the data shapes are different. Use the right editor for the job.</>],
       ]} />
+
+      <H3>SequenceEditor props</H3>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ background: '#0d1117' }}>
+            <th style={thStyle}>Prop</th>
+            <th style={thStyle}>Type</th>
+            <th style={thStyle}>Default</th>
+            <th style={thStyle}>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <PropRow name="initialModel" type="DiagramModel" def="presetSequenceModel()" desc="Must have type: 'sequence'. Non-sequence input falls back to the preset." />
+          <PropRow name="onChange" type="(m: DiagramModel) => void" desc="Fires after every committed mutation." />
+          <PropRow name="onExport" type="(fmt, content) => void" def="download" desc="String for text formats, Blob for PNG. Default triggers a browser download of sequence.<ext>." />
+          <PropRow name="height" type="number | string" def="600" desc="Any CSS height value." />
+          <PropRow name="allowedExports" type="ExportFormat[]" def="all" desc="Whitelist of toolbar export buttons." />
+          <PropRow name="allowImport" type="boolean" def="true" desc="Show the Import button." />
+          <PropRow name="theme" type='"light" | "dark" | "auto"' def='"auto"' desc='"auto" follows OS prefers-color-scheme.' />
+          <PropRow name="themeOverrides" type="Partial<SequenceThemeColors>" desc="Per-property overrides on top of the resolved sequence palette." />
+        </tbody>
+      </table>
     </Section>
   );
 }
