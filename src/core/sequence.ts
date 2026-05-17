@@ -1,10 +1,9 @@
 import { Model } from './model.js';
 import type { SequenceMessage } from './types.js';
+import { nextId } from './ids.js';
 import { toMermaid } from '../exporters/mermaid.js';
 import { toPlantUML } from '../exporters/plantuml.js';
 import { toJSON } from '../exporters/json.js';
-
-let _msgCounter = 0;
 
 export class SequenceBuilder {
   private model: Model;
@@ -21,7 +20,8 @@ export class SequenceBuilder {
   message(from: string, to: string, label: string, options: Partial<Pick<SequenceMessage, 'style'>> = {}): this {
     this.model.addActor(from);
     this.model.addActor(to);
-    this.model.addMessage({ id: `m${++_msgCounter}`, from, to, label, style: options.style ?? 'solid' });
+    const messages = this.model.toJSON().messages ?? [];
+    this.model.addMessage({ id: nextId('m', messages), from, to, label, style: options.style ?? 'solid' });
     return this;
   }
 

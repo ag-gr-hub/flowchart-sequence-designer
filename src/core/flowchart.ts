@@ -1,12 +1,10 @@
 import { Model } from './model.js';
 import type { DiagramEdge, DiagramNode, NodeShape } from './types.js';
+import { nextId } from './ids.js';
 import { toMermaid } from '../exporters/mermaid.js';
 import { toPlantUML } from '../exporters/plantuml.js';
 import { toJSON } from '../exporters/json.js';
 import { toSVG, toPNG } from '../exporters/svg.js';
-
-let _nodeCounter = 0;
-let _edgeCounter = 0;
 
 export class FlowchartBuilder {
   private model: Model;
@@ -21,7 +19,7 @@ export class FlowchartBuilder {
   }
 
   edge(from: string, to: string, options: Partial<Omit<DiagramEdge, 'id' | 'from' | 'to'>> = {}): this {
-    this.model.addEdge({ id: `e${++_edgeCounter}`, from, to, ...options });
+    this.model.addEdge({ id: nextId('e', this.model.toJSON().edges), from, to, ...options });
     return this;
   }
 

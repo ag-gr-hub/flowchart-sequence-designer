@@ -23,6 +23,7 @@ import { findSiblingSnap, type AlignGuideV, type AlignGuideH } from './alignment
 import { nearestInDirection } from './traversal.js';
 import { presetFlowchartModel } from './presets.js';
 import type { DiagramModel, DiagramNode, DiagramEdge, ExportFormat, DiagramVariant } from '../core/types.js';
+import { nextId, makeIdSource } from '../core/ids.js';
 import { toMermaid } from '../exporters/mermaid.js';
 import { toPlantUML } from '../exporters/plantuml.js';
 import { toJSON } from '../exporters/json.js';
@@ -59,9 +60,6 @@ export interface DiagramEditorProps {
 }
 
 
-
-let _nodeSeq = 0;
-let _edgeSeq = 0;
 
 export function DiagramEditor(props: DiagramEditorProps) {
   // Delegate sequence diagrams to the dedicated SequenceEditor.
@@ -188,11 +186,13 @@ function FlowchartEditor({
     if (ids.length === 0) return;
     const idSet = new Set(ids);
     const idMap = new Map<string, string>();
+    const nextNode = makeIdSource('node', model.nodes);
+    const nextEdge = makeIdSource('e', model.edges);
     const newNodes: DiagramNode[] = [];
     for (const oldId of ids) {
       const n = model.nodes.find(x => x.id === oldId);
       if (!n) continue;
-      const newId = `node${++_nodeSeq}`;
+      const newId = nextNode();
       idMap.set(oldId, newId);
       newNodes.push({
         ...n, id: newId,
@@ -203,7 +203,7 @@ function FlowchartEditor({
     const newEdges: DiagramEdge[] = [];
     for (const e of model.edges) {
       if (idSet.has(e.from) && idSet.has(e.to)) {
-        newEdges.push({ ...e, id: `e${++_edgeSeq}`, from: idMap.get(e.from)!, to: idMap.get(e.to)! });
+        newEdges.push({ ...e, id: nextEdge(), from: idMap.get(e.from)!, to: idMap.get(e.to)! });
       }
     }
     const m = { ...model, nodes: [...model.nodes, ...newNodes], edges: [...model.edges, ...newEdges] };
@@ -257,13 +257,15 @@ function FlowchartEditor({
         if (clip && clip.nodes.length > 0) {
           e.preventDefault();
           const idMap = new Map<string, string>();
+          const nextNode = makeIdSource('node', model.nodes);
+          const nextEdge = makeIdSource('e', model.edges);
           const newNodes: DiagramNode[] = clip.nodes.map(n => {
-            const newId = `node${++_nodeSeq}`;
+            const newId = nextNode();
             idMap.set(n.id, newId);
             return { ...n, id: newId, x: (n.x ?? 0) + 24, y: (n.y ?? 0) + 24 };
           });
           const newEdges: DiagramEdge[] = clip.edges.map(ed => ({
-            ...ed, id: `e${++_edgeSeq}`,
+            ...ed, id: nextEdge(),
             from: idMap.get(ed.from) ?? ed.from,
             to: idMap.get(ed.to) ?? ed.to,
           }));
@@ -412,10 +414,10 @@ function FlowchartEditor({
       if (existing) {
         updated = { ...model, edges: model.edges.map(ex => ex.id === existing.id ? { ...ex, to: targetId } : ex) };
       } else {
-        updated = { ...model, edges: [...model.edges, { id: `e${++_edgeSeq}`, from: liveEdge.fromId, to: targetId, label }] };
+        updated = { ...model, edges: [...model.edges, { id: nextId('e', model.edges), from: liveEdge.fromId, to: targetId, label }] };
       }
     } else {
-      updated = { ...model, edges: [...model.edges, { id: `e${++_edgeSeq}`, from: liveEdge.fromId, to: targetId }] };
+      updated = { ...model, edges: [...model.edges, { id: nextId('e', model.edges), from: liveEdge.fromId, to: targetId }] };
     }
     applyAndPush(updated);
     setLiveEdge(null);
@@ -553,7 +555,7 @@ function FlowchartEditor({
   };
 
   const addNode = (atCanvasPos?: { x: number; y: number }) => {
-    const id = `node${++_nodeSeq}`;
+    const id = nextId('node', model.nodes);
     const p = atCanvasPos
       ? { x: snap(atCanvasPos.x), y: snap(atCanvasPos.y) }
       : { x: snap(100 + Math.random() * 240), y: snap(100 + Math.random() * 180) };

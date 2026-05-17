@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { DiagramModel, DiagramNode, DiagramEdge, NodeShape, DiagramVariant } from '../core/types.js';
+import { nextId } from '../core/ids.js';
 import type { ThemeColors } from './DiagramEditor.js';
 
 interface AccentColors { color: string; fill: string; border: string; glow: string }
@@ -20,9 +21,6 @@ const SHAPES: { key: NodeShape; label: string; icon: string }[] = [
   { key: 'circle', label: 'Circle', icon: '○' },
   { key: 'parallelogram', label: 'I/O', icon: '▱' },
 ];
-
-let _edgeSeq = 200;
-let _nodeSeq = 200;
 
 export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart', isDark = false, t, acc }: StepEditorProps) {
   const isQuestion = variant === 'question';
@@ -96,13 +94,13 @@ export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart'
   const addBranch = () => {
     if (branchMode === 'new') {
       if (!branchLabel.trim()) return;
-      const newId = `node${++_nodeSeq}`;
+      const newId = nextId('node', model.nodes);
       const newNode: DiagramNode = { id: newId, label: branchLabel.trim(), shape: 'rectangle', x: (node.x ?? 0) + 200, y: (node.y ?? 0) + 20 + outEdges.length * 100 };
-      const newEdge: DiagramEdge = { id: `e${++_edgeSeq}`, from: nodeId, to: newId, label: branchEdgeLabel.trim() || undefined };
+      const newEdge: DiagramEdge = { id: nextId('e', model.edges), from: nodeId, to: newId, label: branchEdgeLabel.trim() || undefined };
       onModelChange({ ...model, nodes: [...model.nodes, newNode], edges: [...model.edges, newEdge] });
     } else {
       if (!branchTarget || model.edges.some(e => e.from === nodeId && e.to === branchTarget)) return;
-      const newEdge: DiagramEdge = { id: `e${++_edgeSeq}`, from: nodeId, to: branchTarget, label: branchEdgeLabel.trim() || undefined };
+      const newEdge: DiagramEdge = { id: nextId('e', model.edges), from: nodeId, to: branchTarget, label: branchEdgeLabel.trim() || undefined };
       onModelChange({ ...model, edges: [...model.edges, newEdge] });
     }
     setBranchLabel(''); setBranchEdgeLabel(''); setBranchTarget(''); setAddingBranch(false);

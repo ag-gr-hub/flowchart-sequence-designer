@@ -9,6 +9,7 @@ import { fromMermaid } from '../importers/mermaid.js';
 import { fromJSON } from '../importers/json.js';
 import { useIsDark } from './hooks/useSystemTheme.js';
 import { presetSequenceModel } from './presets.js';
+import { nextId } from '../core/ids.js';
 
 const INDIGO = '#4f46e5';
 const INDIGO_SOFT = '#eef2ff';
@@ -88,17 +89,6 @@ export interface SequenceEditorProps {
    * passed to DiagramEditor is forwarded here when type === 'sequence'.
    */
   themeOverrides?: Partial<SequenceThemeColors>;
-}
-
-// Derive next message ID from the current array so it can't collide with
-// preset IDs (m1..m4) or anything loaded from a JSON/Mermaid import.
-function nextMsgId(existing: SequenceMessage[]): string {
-  let max = 0;
-  for (const m of existing) {
-    const match = /^m(\d+)$/.exec(m.id);
-    if (match) max = Math.max(max, parseInt(match[1], 10));
-  }
-  return `m${max + 1}`;
 }
 
 interface DragState {
@@ -216,7 +206,7 @@ export function SequenceEditor({
       applyAndPush({
         ...model,
         actors: [...actors, a, b],
-        messages: [...messages, { id: nextMsgId(messages), from: a, to: b, label: 'message', style: 'solid' }],
+        messages: [...messages, { id: nextId('m', messages), from: a, to: b, label: 'message', style: 'solid' }],
       });
       return;
     }
@@ -224,7 +214,7 @@ export function SequenceEditor({
     const to = actors[Math.min(1, actors.length - 1)] ?? from;
     applyAndPush({
       ...model,
-      messages: [...messages, { id: nextMsgId(messages), from, to, label: 'message', style: 'solid' }],
+      messages: [...messages, { id: nextId('m', messages), from, to, label: 'message', style: 'solid' }],
     });
   };
 
