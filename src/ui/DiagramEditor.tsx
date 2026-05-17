@@ -18,6 +18,7 @@ import {
   bezierPath,
 } from './layout.js';
 import { findSiblingSnap, type AlignGuideV, type AlignGuideH } from './alignment.js';
+import { nearestInDirection } from './traversal.js';
 import type { DiagramModel, DiagramNode, DiagramEdge, ExportFormat, DiagramVariant } from '../core/types.js';
 import { toMermaid } from '../exporters/mermaid.js';
 import { toPlantUML } from '../exporters/plantuml.js';
@@ -311,10 +312,34 @@ function FlowchartEditor({
       }
 
       if (selectedSet.size > 0 && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        const dirKey = e.key === 'ArrowLeft' ? 'left' : e.key === 'ArrowRight' ? 'right' : e.key === 'ArrowUp' ? 'up' : 'down';
+
+        // Alt+Arrow → traverse the graph: jump selection to the nearest neighbor in that direction.
+        if (e.altKey && selected) {
+          e.preventDefault();
+          const origin = model.nodes.find(n => n.id === selected);
+          if (!origin) return;
+          const ox = (origin.x ?? 0) + (variant === 'question' ? questionNodeW(origin) : nodeWidth(origin.label)) / 2;
+          const oy = (origin.y ?? 0) + (variant === 'question' ? questionNodeH((origin.metadata?.answers as string[] | undefined) ?? []) : NODE_H) / 2;
+          const candidates = model.nodes
+            .filter(n => n.id !== selected)
+            .map(n => ({
+              id: n.id,
+              x: (n.x ?? 0) + (variant === 'question' ? questionNodeW(n) : nodeWidth(n.label)) / 2,
+              y: (n.y ?? 0) + (variant === 'question' ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? []) : NODE_H) / 2,
+            }));
+          const nextId = nearestInDirection(ox, oy, dirKey, candidates);
+          if (nextId) {
+            selectOne(nextId);
+            setAnnouncement(`Selected ${model.nodes.find(n => n.id === nextId)?.label ?? ''}.`);
+          }
+          return;
+        }
+
         e.preventDefault();
         const step = e.shiftKey ? GRID * 4 : GRID;
-        const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
-        const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+        const dx = dirKey === 'left' ? -step : dirKey === 'right' ? step : 0;
+        const dy = dirKey === 'up' ? -step : dirKey === 'down' ? step : 0;
         const ids = selectedSet;
         const updated = {
           ...model,
@@ -776,7 +801,22 @@ function FlowchartEditor({
   const amberArrow = isDark ? C.amberDark : C.amber;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height, width: '100%', fontFamily: 'ui-sans-serif,system-ui,sans-serif', boxSizing: 'border-box', background: t.ctrlsBg }}>
+    <div className="fsd-editor" style={{ display: 'flex', flexDirection: 'column', height, width: '100%', fontFamily: 'ui-sans-serif,system-ui,sans-serif', boxSizing: 'border-box', background: t.ctrlsBg }}>
+      <style>{`
+        .fsd-editor button:focus-visible,
+        .fsd-editor input:focus-visible,
+        .fsd-editor textarea:focus-visible,
+        .fsd-editor select:focus-visible,
+        .fsd-editor [role="button"]:focus-visible {
+          outline: 2px solid ${acc.color};
+          outline-offset: 2px;
+          border-radius: 6px;
+        }
+        .fsd-editor svg[role="application"]:focus-visible {
+          outline: 2px solid ${acc.color};
+          outline-offset: -2px;
+        }
+      `}</style>
       {/* Screen-reader live region — announces selection/add/delete actions. */}
       <div
         role="status" aria-live="polite" aria-atomic="true"
@@ -1066,7 +1106,7 @@ function FlowchartEditor({
         <span>{model.nodes.length} {variantLabel.toLowerCase()}s</span>
         <span>{model.edges.length} connections</span>
         <span>{Math.round(transform.scale * 100)}% zoom</span>
-        <span style={{ marginLeft: 'auto' }}>Ctrl+Z undo · Ctrl+Y redo · Ctrl+0 fit</span>
+        <span style={{ marginLeft: 'auto' }}>Ctrl+Z undo · Ctrl+Y redo · Ctrl+0 fit · Alt+Arrow traverse</span>
         {selected && <span style={{ color: acc.color }}>{model.nodes.find(n => n.id === selected)?.label}</span>}
       </div>
     </div>

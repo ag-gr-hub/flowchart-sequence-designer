@@ -36,6 +36,12 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - Port circles grow from 6 to 9 px on `(pointer: coarse)` devices and stay
   permanently visible (instead of fading in on hover) so they're tappable on
   touch.
+- `Alt+Arrow` traverses the graph from the currently selected node — picks the
+  nearest sibling in the chosen direction (45° cone, Euclidean nearest). Plain
+  arrow keys still nudge as before; the `Alt` modifier disambiguates.
+- Focus-visible outlines on every focusable control inside the editor (buttons,
+  inputs, role="button" nodes, the canvas itself) using the active accent
+  color, so keyboard users always see where focus lives.
 
 ### Changed
 - Internal refactor: the 1500-line `DiagramEditor.tsx` monolith is split into
