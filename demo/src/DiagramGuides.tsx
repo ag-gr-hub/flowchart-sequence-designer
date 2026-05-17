@@ -182,8 +182,7 @@ const onboarding = flowchart('Onboarding')
   .edge('s3', 's4')
   .edge('s4', 's5');
 
-const model = { ...onboarding.toJSON ? JSON.parse(onboarding.toJSON()) : onboarding,
-  variant: 'journey' };
+const model = { ...JSON.parse(onboarding.toJSON()), variant: 'journey' };
 
 // Or build the model literal directly with variant: 'journey'.`}>
         {KW('import')} {'{ '}{FN('flowchart')}{' }'} {KW('from')} {STR("'flowchart-sequence-designer'")};{'\n\n'}
@@ -307,7 +306,7 @@ login.toMermaid();
         <>Three actor columns and four sample messages render by default. The canvas is fully scrollable.</>,
         <>Click <strong>+ Actor</strong> to add a column, <strong>+ Message</strong> to append a row.</>,
         <>Drag a message row to reorder it. Self-messages (same actor for <em>from</em> and <em>to</em>) render as a small loop on the actor's lifeline.</>,
-        <>Select a message and open the right-hand panel to edit from/to, body text, and arrow style (solid / dashed for async / open).</>,
+        <>Select a message and open the right-hand panel to edit from/to, body text, and arrow style (solid or dashed for async).</>,
       ]} />
 
       <H3>Common operations</H3>

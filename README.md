@@ -166,12 +166,14 @@ All presets return a deep clone — mutate the result freely.
 
 ```ts
 import { Model } from 'flowchart-sequence-designer';
-import type { DiagramModel } from 'flowchart-sequence-designer';
 
-const m = new Model({ type: 'flowchart', nodes: [], edges: [] });
+const m = new Model('flowchart');         // new Model(type, title?, variant?)
 m.addNode({ id: 'a', label: 'Step A', shape: 'rectangle' });
 m.addNode({ id: 'b', label: 'Step B', shape: 'rectangle' });
 m.addEdge({ id: 'e1', from: 'a', to: 'b', label: 'next' });
+
+// Rehydrate from a saved DiagramModel:
+// const m2 = Model.fromData(savedJson);
 ```
 
 ---
@@ -386,6 +388,8 @@ import { SequenceEditor, presetSequenceModel } from 'flowchart-sequence-designer
 
 ## Types
 
+### Core entry (`flowchart-sequence-designer`)
+
 ```ts
 import type {
   DiagramModel,
@@ -396,7 +400,39 @@ import type {
   NodeShape,
   ExportFormat,
   SequenceMessage,
+  ValidationError,
 } from 'flowchart-sequence-designer';
+
+import {
+  Model,                 // class — build / query / validate diagrams
+  flowchart,             // fluent FlowchartBuilder factory
+  sequence,              // fluent SequenceBuilder factory
+  toMermaid, fromMermaid,
+  toPlantUML,
+  toJSON, fromJSON,
+  toSVG, toPNG,
+} from 'flowchart-sequence-designer';
+```
+
+### UI entry (`flowchart-sequence-designer/ui`)
+
+```ts
+import {
+  DiagramEditor,         // flowchart / question / journey editor
+  SequenceEditor,        // sequence diagram editor
+  Toolbar,               // standalone toolbar (used internally)
+  StepEditor,            // node property panel (used internally)
+  presetFlowchartModel,  // starter model for flowchart variants
+  presetSequenceModel,   // starter model for sequence
+  emptyModel,            // blank model factory
+} from 'flowchart-sequence-designer/ui';
+
+import type {
+  DiagramEditorProps,
+  SequenceEditorProps,
+  ThemeColors,           // flowchart theme palette
+  SequenceThemeColors,   // sequence theme palette
+} from 'flowchart-sequence-designer/ui';
 ```
 
 ### `DiagramModel`
@@ -404,11 +440,12 @@ import type {
 ```ts
 interface DiagramModel {
   type: 'flowchart' | 'sequence';
+  variant?: DiagramVariant;    // 'flowchart' | 'question' | 'journey' (flowchart-type only)
   title?: string;
-  nodes: DiagramNode[];
-  edges: DiagramEdge[];
-  actors?: string[];           // sequence diagrams
-  messages?: SequenceMessage[]; // sequence diagrams
+  nodes: DiagramNode[];        // always present (empty array for sequence models)
+  edges: DiagramEdge[];        // always present (empty array for sequence models)
+  actors?: string[];           // sequence models only — ordered actor names
+  messages?: SequenceMessage[]; // sequence models only — ordered messages
 }
 ```
 
@@ -436,6 +473,29 @@ interface DiagramEdge {
   label?: string;
   style?: 'solid' | 'dashed' | 'dotted';
   arrowhead?: 'arrow' | 'none' | 'open';
+  waypoint?: { x: number; y: number }; // manual routing point (JSON only)
+}
+```
+
+### `SequenceMessage`
+
+```ts
+interface SequenceMessage {
+  id: string;
+  from: string;            // actor name
+  to: string;              // actor name
+  label: string;
+  style?: 'solid' | 'dashed';
+}
+```
+
+### `ValidationError`
+
+```ts
+interface ValidationError {
+  kind: 'dangling-from' | 'dangling-to' | 'duplicate-node-id' | 'duplicate-edge-id';
+  id: string;
+  message: string;
 }
 ```
 
@@ -451,9 +511,9 @@ flowchart-sequence-designer/
 │       └── index.js / index.cjs / index.d.ts ← React UI
 └── src/
     ├── core/          # types, Model, FlowchartBuilder, SequenceBuilder
-    ├── exporters/     # mermaid, plantuml, json, svg
+    ├── exporters/     # mermaid, plantuml, json, svg, png
     ├── importers/     # mermaid, json
-    └── ui/            # DiagramEditor, StepEditor, Toolbar, NodeNavigator
+    └── ui/            # DiagramEditor, SequenceEditor, Toolbar, hooks
 ```
 
 The `"."` export gives you the core API; `"./ui"` gives you the React components. Consumers that only use the programmatic API never pull in React.

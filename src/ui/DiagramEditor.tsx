@@ -812,11 +812,11 @@ function FlowchartEditor({
         )}
       </div>
 
-      <div style={{ padding: '4px 14px', fontSize: 11, color: t.textMuted, background: t.statusBg, borderTop: `1px solid ${t.ctrlsBorder}`, display: 'flex', gap: 16 }}>
+      <div style={{ padding: '4px 14px', fontSize: 11, color: t.textMuted, background: t.statusBg, borderTop: `1px solid ${t.ctrlsBorder}`, display: 'flex', gap: 16, flexWrap: 'wrap', overflow: 'hidden', maxHeight: 28 }}>
         <span>{model.nodes.length} {variantLabel.toLowerCase()}s</span>
         <span>{model.edges.length} connections</span>
         <span>{Math.round(transform.scale * 100)}% zoom</span>
-        <span style={{ marginLeft: 'auto' }}>Ctrl+Z undo · Ctrl+Y redo · Ctrl+0 fit · Alt+Arrow traverse</span>
+        <span style={{ marginLeft: 'auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Ctrl+Z undo · Ctrl+Y redo · Ctrl+0 fit · Alt+Arrow traverse</span>
         {selected && <span style={{ color: acc.color }}>{model.nodes.find(n => n.id === selected)?.label}</span>}
       </div>
     </div>

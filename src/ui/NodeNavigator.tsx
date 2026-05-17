@@ -47,6 +47,8 @@ export function NodeNavigator({
         <button
           onClick={onToggle}
           title="Open node list"
+          aria-expanded={false}
+          aria-label="Open node list"
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textMuted, padding: 6, borderRadius: 6, fontSize: 14, lineHeight: 1 }}
         >☰</button>
         <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 700, writingMode: 'vertical-rl', transform: 'rotate(180deg)', letterSpacing: 0.5 }}>
@@ -80,6 +82,8 @@ export function NodeNavigator({
           onClick={onToggle}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textMuted, padding: '2px 4px', borderRadius: 4, fontSize: 13, lineHeight: 1 }}
           title="Collapse"
+          aria-expanded={true}
+          aria-label="Collapse node list"
         >‹</button>
       </div>
 
