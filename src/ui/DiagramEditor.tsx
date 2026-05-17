@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Toolbar } from './Toolbar.js';
 import { StepEditor } from './StepEditor.js';
 import { SequenceEditor } from './SequenceEditor.js';
@@ -7,10 +7,13 @@ import { NodeNavigator } from './NodeNavigator.js';
 import { ContextMenu, type CtxMenuState as CtxMenu } from './ContextMenu.js';
 import { NodeShape, QuestionNode, EdgeLine } from './render.js';
 import { useHistory } from './hooks/useHistory.js';
-import { useIsDark, usePrefersReducedMotion, useIsCoarsePointer } from './hooks/useSystemTheme.js';
+import { usePrefersReducedMotion, useIsCoarsePointer } from './hooks/useSystemTheme.js';
 import { useCanvasWheel } from './hooks/useCanvasWheel.js';
 import { useCanvasTouch } from './hooks/useCanvasTouch.js';
 import { useElementSize } from './hooks/useElementSize.js';
+import { useEditorTheme } from './hooks/useEditorTheme.js';
+import { useExporters } from './hooks/useExporters.js';
+import { useImporter } from './hooks/useImporter.js';
 import {
   NODE_H,
   GRID,
@@ -24,12 +27,6 @@ import { nearestInDirection } from './traversal.js';
 import { presetFlowchartModel } from './presets.js';
 import type { DiagramModel, DiagramNode, DiagramEdge, ExportFormat, DiagramVariant } from '../core/types.js';
 import { nextId, makeIdSource } from '../core/ids.js';
-import { toMermaid } from '../exporters/mermaid.js';
-import { toPlantUML } from '../exporters/plantuml.js';
-import { toJSON } from '../exporters/json.js';
-import { toSVG, toPNG } from '../exporters/svg.js';
-import { fromMermaid } from '../importers/mermaid.js';
-import { fromJSON } from '../importers/json.js';
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 import { ACCENT as C, type ThemeColors, lightTheme, darkTheme, variantAccent } from './theme.js';
@@ -137,17 +134,12 @@ function FlowchartEditor({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const reducedMotion = usePrefersReducedMotion();
-  const isDark = useIsDark(theme);
+  const { t, isDark } = useEditorTheme(theme, themeOverrides, { light: lightTheme, dark: darkTheme });
   const isCoarse = useIsCoarsePointer();
   const portR = isCoarse ? 9 : 6;
 
   // Track the SVG element size for the minimap viewport overlay.
   const viewport = useElementSize(svgRef);
-
-  const t = useMemo<ThemeColors>(
-    () => ({ ...(isDark ? darkTheme : lightTheme), ...(themeOverrides ?? {}) }),
-    [isDark, themeOverrides],
-  );
 
 
   const reCenter = useCallback(() => {
@@ -648,28 +640,17 @@ function FlowchartEditor({
     applyAndPush(updated);
   };
 
-  const handleExport = useCallback(async (format: ExportFormat) => {
-    let content: string | Blob;
-    switch (format) {
-      case 'mermaid': content = toMermaid(model); break;
-      case 'plantuml': content = toPlantUML(model); break;
-      case 'json': content = toJSON(model); break;
-      case 'svg': content = toSVG(model); break;
-      case 'png': content = await toPNG(model); break;
-      default: return;
-    }
-    if (onExport) { onExport(format, content); return; }
-    const url = content instanceof Blob ? URL.createObjectURL(content) : URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
-    const a = document.createElement('a'); a.href = url; a.download = `diagram.${format === 'plantuml' ? 'puml' : format}`; a.click(); URL.revokeObjectURL(url);
-  }, [model, onExport]);
+  const handleExport = useExporters(model, onExport, 'diagram');
 
-  const handleImport = useCallback((text: string) => {
-    try {
-      const m = text.trim().startsWith('{') ? fromJSON(text).toJSON() : fromMermaid(text).toJSON();
-      const nodes = m.nodes.map((n, i) => ({ ...n, x: n.x ?? snap(80 + (i % 4) * 200), y: n.y ?? snap(80 + Math.floor(i / 4) * 140) }));
-      const updated = { ...m, nodes }; applyAndPush(updated);
-    } catch (err) { alert(`Import failed: ${(err as Error).message}`); }
-  }, [applyAndPush]);
+  const positionFlowchartNodes = useCallback((m: DiagramModel): DiagramModel => ({
+    ...m,
+    nodes: m.nodes.map((n, i) => ({
+      ...n,
+      x: n.x ?? snap(80 + (i % 4) * 200),
+      y: n.y ?? snap(80 + Math.floor(i / 4) * 140),
+    })),
+  }), []);
+  const handleImport = useImporter(applyAndPush, { transform: positionFlowchartNodes });
 
   const acc = variantAccent(variant, isDark);
   const variantLabel = variant === 'question' ? 'Question' : variant === 'journey' ? 'Step' : 'Node';

@@ -1,13 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DiagramModel, SequenceMessage, ExportFormat } from '../core/types.js';
 import { Toolbar } from './Toolbar.js';
-import { toMermaid } from '../exporters/mermaid.js';
-import { toPlantUML } from '../exporters/plantuml.js';
-import { toJSON } from '../exporters/json.js';
-import { toSVG, toPNG } from '../exporters/svg.js';
-import { fromMermaid } from '../importers/mermaid.js';
-import { fromJSON } from '../importers/json.js';
-import { useIsDark } from './hooks/useSystemTheme.js';
+import { useEditorTheme } from './hooks/useEditorTheme.js';
+import { useExporters } from './hooks/useExporters.js';
+import { useImporter } from './hooks/useImporter.js';
 import { presetSequenceModel } from './presets.js';
 import { nextId } from '../core/ids.js';
 
@@ -121,11 +117,7 @@ export function SequenceEditor({
   const historyIdxRef = useRef(0);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const isDark = useIsDark(theme);
-  const t = useMemo<SequenceThemeColors>(
-    () => ({ ...(isDark ? darkTheme : lightTheme), ...(themeOverrides ?? {}) }),
-    [isDark, themeOverrides],
-  );
+  const { t, isDark } = useEditorTheme(theme, themeOverrides, { light: lightTheme, dark: darkTheme });
 
   const actors = model.actors ?? [];
   const messages = model.messages ?? [];
@@ -258,39 +250,11 @@ export function SequenceEditor({
   }, [undo, redo, selected]);
 
   // ── Export / import ─────────────────────────────────────────────────────
-  const handleExport = useCallback(async (format: ExportFormat) => {
-    let content: string | Blob;
-    switch (format) {
-      case 'mermaid': content = toMermaid(model); break;
-      case 'plantuml': content = toPlantUML(model); break;
-      case 'json': content = toJSON(model); break;
-      case 'svg': content = toSVG(model); break;
-      case 'png': content = await toPNG(model); break;
-      default: return;
-    }
-    if (onExport) { onExport(format, content); return; }
-    const url = content instanceof Blob
-      ? URL.createObjectURL(content)
-      : URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sequence.${format === 'plantuml' ? 'puml' : format}`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [model, onExport]);
-
-  const handleImport = useCallback((text: string) => {
-    try {
-      const m = text.trim().startsWith('{') ? fromJSON(text).toJSON() : fromMermaid(text).toJSON();
-      if (m.type !== 'sequence') {
-        alert('Imported diagram is not a sequence diagram.');
-        return;
-      }
-      applyAndPush(ensureSequenceModel(m));
-    } catch (err) {
-      alert(`Import failed: ${(err as Error).message}`);
-    }
-  }, [applyAndPush]);
+  const handleExport = useExporters(model, onExport, 'sequence');
+  const handleImport = useImporter(applyAndPush, {
+    expectedType: 'sequence',
+    transform: ensureSequenceModel,
+  });
 
   // ── Drag-to-reorder ─────────────────────────────────────────────────────
   // Mousedown seeds drag state but does NOT mark it active — that flips on
