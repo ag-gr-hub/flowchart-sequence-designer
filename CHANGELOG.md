@@ -76,6 +76,13 @@ Versioning: [Semantic Versioning](https://semver.org/).
   width/height ternary. `DiagramEditor.tsx` is now ~990 lines.
 
 ### Fixed
+- Sequence diagram new-message ID collision. `addMessage()` minted IDs from
+  a module-level counter starting at zero, so the first added message got
+  `m1` — the same ID as the preset's first message. Selection state holds
+  one ID, so clicking the new row highlighted both rows that shared the
+  collided ID. Replaced with `nextMsgId(messages)` which scans existing
+  IDs matching `/^m(\d+)$/` and returns `m{max+1}`, eliminating any chance
+  of collision with the preset or with imported diagrams.
 - Sequence diagram message reorder. The previous drag handler ran
   `reorderMessage` (which mutates the model + pushes history) on every
   mouse-move tick, so a single drag could cascade through neighboring rows,

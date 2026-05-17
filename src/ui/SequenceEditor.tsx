@@ -90,8 +90,16 @@ export interface SequenceEditorProps {
   themeOverrides?: Partial<SequenceThemeColors>;
 }
 
-let _msgSeq = 0;
-const mid = () => `m${++_msgSeq}`;
+// Derive next message ID from the current array so it can't collide with
+// preset IDs (m1..m4) or anything loaded from a JSON/Mermaid import.
+function nextMsgId(existing: SequenceMessage[]): string {
+  let max = 0;
+  for (const m of existing) {
+    const match = /^m(\d+)$/.exec(m.id);
+    if (match) max = Math.max(max, parseInt(match[1], 10));
+  }
+  return `m${max + 1}`;
+}
 
 interface DragState {
   id: string;
@@ -208,7 +216,7 @@ export function SequenceEditor({
       applyAndPush({
         ...model,
         actors: [...actors, a, b],
-        messages: [...messages, { id: mid(), from: a, to: b, label: 'message', style: 'solid' }],
+        messages: [...messages, { id: nextMsgId(messages), from: a, to: b, label: 'message', style: 'solid' }],
       });
       return;
     }
@@ -216,7 +224,7 @@ export function SequenceEditor({
     const to = actors[Math.min(1, actors.length - 1)] ?? from;
     applyAndPush({
       ...model,
-      messages: [...messages, { id: mid(), from, to, label: 'message', style: 'solid' }],
+      messages: [...messages, { id: nextMsgId(messages), from, to, label: 'message', style: 'solid' }],
     });
   };
 
