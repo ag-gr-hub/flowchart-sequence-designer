@@ -14,31 +14,37 @@ import { fromJSON } from '../../importers/json.js';
  * the parse/error-handling shell.
  *
  * @param applyAndPush  Commits the imported model into the editor's history stack.
- * @param options.expectedType  If set, an alert fires when the imported model is
+ * @param options.expectedType  If set, an error fires when the imported model is
  *   the wrong type — guards against pasting a flowchart into the sequence editor.
  * @param options.transform     Optional final-shape transform applied after the
  *   type check and before `applyAndPush` (e.g., position-defaulting nodes).
+ * @param options.onSuccess     Optional success callback (e.g., for toast notifications).
+ * @param options.onError       Optional error callback. Falls back to `alert()` if omitted.
  */
 export function useImporter(
   applyAndPush: (m: DiagramModel) => void,
   options: {
     expectedType?: DiagramModel['type'];
     transform?: (m: DiagramModel) => DiagramModel;
+    onSuccess?: (message: string) => void;
+    onError?: (message: string) => void;
   } = {},
 ): (text: string) => void {
-  const { expectedType, transform } = options;
+  const { expectedType, transform, onSuccess, onError } = options;
+  const reportError = onError ?? ((msg: string) => alert(msg));
   return useCallback((text: string) => {
     try {
       const parsed = text.trim().startsWith('{')
         ? fromJSON(text).toJSON()
         : fromMermaid(text).toJSON();
       if (expectedType && parsed.type !== expectedType) {
-        alert(`Imported diagram is not a ${expectedType} diagram.`);
+        reportError(`Imported diagram is not a ${expectedType} diagram.`);
         return;
       }
       applyAndPush(transform ? transform(parsed) : parsed);
+      onSuccess?.('Diagram imported successfully');
     } catch (err) {
-      alert(`Import failed: ${(err as Error).message}`);
+      reportError(`Import failed: ${(err as Error).message}`);
     }
-  }, [applyAndPush, expectedType, transform]);
+  }, [applyAndPush, expectedType, transform, onSuccess, onError]);
 }

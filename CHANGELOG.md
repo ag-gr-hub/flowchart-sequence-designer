@@ -7,6 +7,20 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Toast notification system (`useToast` hook + `ToastContainer`) for
+  import/export success/failure feedback in both editors. Replaces silent
+  failures and `alert()` with auto-dismissing colored toasts.
+- Keyboard accessibility on SVG canvas nodes (`DiagramCanvas`): nodes are
+  now focusable (`tabIndex=0`) with visual focus highlight, F2/Enter to
+  rename in-place. Delete handled by existing global keyboard handler.
+- Keyboard accessibility on sequence actors (`SequenceCanvas`): actor text
+  is focusable with F2/Enter rename activation and keyboard-accessible
+  remove button.
+- ARIA labels on all Toolbar export/import buttons.
+- Focus-visible CSS rings for SVG `[role="button"]` elements in both
+  DiagramEditor and SequenceEditor.
+- `className="fsd-seq-editor"` on SequenceEditor root for CSS targeting.
+- JSDoc comments on all `demo/src/docs-primitives.tsx` helper components.
 - `themeOverrides` prop on `DiagramEditor` and `SequenceEditor` — a
   `Partial<ThemeColors>` (or `Partial<SequenceThemeColors>`) shallow-merged on
   top of the resolved light/dark palette so consumers can match the editor to

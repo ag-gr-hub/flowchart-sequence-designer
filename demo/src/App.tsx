@@ -23,12 +23,13 @@ export default function App() {
     tab === 'docs' || tab === 'sequence' ? 'flowchart' : tab;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       {/* Top nav */}
       <div style={{
         display: 'flex', gap: 0, background: '#0f172a',
         padding: '0 16px', alignItems: 'stretch', flexShrink: 0,
         borderBottom: '1px solid #1e293b',
+        overflowX: 'auto', overflowY: 'hidden',
       }}>
         <a
           href="https://github.com/ag-gr-hub/flowchart-sequence-designer"
@@ -62,7 +63,7 @@ export default function App() {
             }}
           >
             <span>{v.label}</span>
-            <span style={{ fontSize: 10, opacity: 0.6 }}>{v.description}</span>
+            <span style={{ fontSize: 10, opacity: 0.6, whiteSpace: 'nowrap' }}>{v.description}</span>
           </button>
         ))}
 
@@ -79,7 +80,7 @@ export default function App() {
           }}
         >
           <span>For Developers</span>
-          <span style={{ fontSize: 10, opacity: 0.6 }}>API & programmatic usage</span>
+          <span style={{ fontSize: 10, opacity: 0.6, whiteSpace: 'nowrap' }}>API & programmatic usage</span>
         </button>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>

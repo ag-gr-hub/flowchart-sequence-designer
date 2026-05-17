@@ -226,7 +226,7 @@ export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart'
             })}
 
             {addingAnswer ? (
-              <div style={{ marginTop: 10, background: tt.addFormBg, borderRadius: 10, padding: 12, border: `1.5px solid ${accentBorder}` }}>
+              <div role="group" aria-label="Add answer form" onKeyDown={e => { if (e.key === 'Escape') { setAddingAnswer(false); setNewAnswer(''); } }} style={{ marginTop: 10, background: tt.addFormBg, borderRadius: 10, padding: 12, border: `1.5px solid ${accentBorder}` }}>
                 <input autoFocus value={newAnswer} onChange={e => setNewAnswer(e.target.value)} onKeyDown={e => e.key === 'Enter' && addAnswer()} placeholder="Answer text…" style={{ ...inputStyle, marginBottom: 8 }} />
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button onClick={addAnswer} style={addBtnStyle}>Add Answer</button>
@@ -275,7 +275,7 @@ export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart'
             })}
 
             {addingBranch ? (
-              <div style={{ marginTop: 10, background: tt.addFormBg, borderRadius: 10, padding: 12, border: `1.5px solid ${accentBorder}` }}>
+              <div role="group" aria-label="Add branch form" onKeyDown={e => { if (e.key === 'Escape') setAddingBranch(false); }} style={{ marginTop: 10, background: tt.addFormBg, borderRadius: 10, padding: 12, border: `1.5px solid ${accentBorder}` }}>
                 <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
                   {(['new', 'existing'] as const).map(mode => (
                     <button key={mode} onClick={() => setBranchMode(mode)} style={{

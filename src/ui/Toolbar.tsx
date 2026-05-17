@@ -37,7 +37,7 @@ export function Toolbar({ onExport, onImport, allowedExports, allowImport = true
 
       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
         {allowImport && onImport && (
-          <button onClick={() => setImportOpen(true)} style={ghostBtn}>
+          <button onClick={() => setImportOpen(true)} aria-label="Import diagram" style={ghostBtn}>
             ↑ Import
           </button>
         )}
@@ -45,7 +45,7 @@ export function Toolbar({ onExport, onImport, allowedExports, allowImport = true
           <>
             <span style={{ fontSize: 11, color: darkTheme.inputText, margin: '0 4px' }}>Export →</span>
             {formats.map(f => (
-              <button key={f.key} onClick={() => onExport(f.key)} style={exportBtn}>
+              <button key={f.key} onClick={() => onExport(f.key)} aria-label={`Export as ${f.label}`} style={exportBtn}>
                 {f.label}
               </button>
             ))}

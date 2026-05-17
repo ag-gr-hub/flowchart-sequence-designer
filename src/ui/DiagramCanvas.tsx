@@ -226,6 +226,7 @@ export function DiagramCanvas(props: DiagramCanvasProps) {
                 key={node.id}
                 transform={`translate(${node.x ?? 0},${node.y ?? 0})`}
                 role="button"
+                tabIndex={0}
                 aria-label={`${variantLabel} ${variant === 'journey' ? idx + 1 + ': ' : ''}${node.label}${isSelected ? ', selected' : ''}`}
                 style={drag?.nodeId === node.id ? STYLE_NODE_GRABBING : STYLE_NODE_GRAB}
                 onMouseDown={e => onNodeMouseDown(e, node.id)}
@@ -234,6 +235,15 @@ export function DiagramCanvas(props: DiagramCanvasProps) {
                 onContextMenu={e => onNodeContextMenu(e, node.id)}
                 onMouseEnter={() => setHoveredId(node.id)}
                 onMouseLeave={() => setHoveredId(null)}
+                onFocus={() => setHoveredId(node.id)}
+                onBlur={() => setHoveredId(null)}
+                onKeyDown={e => {
+                  if (e.key === 'F2' || (e.key === 'Enter' && !e.ctrlKey && !e.metaKey)) {
+                    e.preventDefault();
+                    setEditingId(node.id);
+                    setEditLabel(node.label);
+                  }
+                }}
               >
                 <title>{`${variantLabel}: ${node.label}`}</title>
                 {isQuestion ? (
