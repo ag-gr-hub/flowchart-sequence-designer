@@ -55,6 +55,12 @@ Versioning: [Semantic Versioning](https://semver.org/).
   the opt-out for consumers who explicitly want a blank canvas).
 - Demo (live site) gains a Sequence tab so all four variants are
   reachable from the same nav, each booting with its preset diagram.
+- Import dialog. Clicking **↑ Import** in the toolbar now opens a proper
+  modal with a paste-area, a file picker (`.json` / `.mmd` / `.mermaid` /
+  `.txt`), live format detection (`{` → JSON, otherwise Mermaid), error
+  feedback, focus trap, and Esc/backdrop dismissal. Replaces the previous
+  `window.prompt()` one-liner that couldn't fit a multi-line Mermaid graph
+  or accept file uploads at all.
 
 ### Changed
 - Internal refactor: the 1500-line `DiagramEditor.tsx` monolith is split into
