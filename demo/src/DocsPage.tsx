@@ -1,91 +1,28 @@
-import { useState } from 'react';
+import {
+  Section, P, Code, PropRow,
+  KW, STR, CMT, FN, TY, OP,
+  inlineCode, thStyle, tdStyle, linkPillStyle,
+} from './docs-primitives';
+import { FlowchartGuide, QuestionGuide, JourneyGuide, SequenceGuide } from './DiagramGuides';
 
 const GITHUB = 'https://github.com/ag-gr-hub/flowchart-sequence-designer';
 const NPM = 'https://www.npmjs.com/package/flowchart-sequence-designer';
 
-// ── tiny syntax-highlight helpers ────────────────────────────────────────────
-const KW = (s: string) => <span style={{ color: '#c792ea' }}>{s}</span>;
-const STR = (s: string) => <span style={{ color: '#c3e88d' }}>{s}</span>;
-const CMT = (s: string) => <span style={{ color: '#546e7a', fontStyle: 'italic' }}>{s}</span>;
-const FN = (s: string) => <span style={{ color: '#82aaff' }}>{s}</span>;
-const TY = (s: string) => <span style={{ color: '#ffcb6b' }}>{s}</span>;
-const OP = (s: string) => <span style={{ color: '#89ddff' }}>{s}</span>;
-const NUM = (s: string) => <span style={{ color: '#f78c6c' }}>{s}</span>;
-
-// ── copy-to-clipboard button ──────────────────────────────────────────────────
-function CopyBtn({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1800); }}
-      style={{
-        position: 'absolute', top: 10, right: 10,
-        background: copied ? '#10b981' : '#1e293b',
-        border: '1px solid #334155', borderRadius: 6, padding: '3px 10px',
-        color: copied ? '#fff' : '#94a3b8', fontSize: 11, cursor: 'pointer',
-        transition: 'background 0.2s, color 0.2s',
-        fontFamily: 'ui-sans-serif,system-ui,sans-serif',
-      }}
-    >{copied ? '✓ Copied' : 'Copy'}</button>
-  );
-}
-
-// ── code block ────────────────────────────────────────────────────────────────
-function Code({ children, raw }: { children: React.ReactNode; raw: string }) {
-  return (
-    <div style={{ position: 'relative', margin: '12px 0 24px' }}>
-      <CopyBtn text={raw} />
-      <pre style={{
-        background: '#0d1117', border: '1px solid #21262d', borderRadius: 10,
-        padding: '18px 20px', overflowX: 'auto', margin: 0,
-        fontFamily: '"Fira Code","Cascadia Code",ui-monospace,monospace',
-        fontSize: 13, lineHeight: 1.7, color: '#cdd9e5',
-      }}>
-        <code>{children}</code>
-      </pre>
-    </div>
-  );
-}
-
-// ── section header ────────────────────────────────────────────────────────────
-function Section({ id, title, badge, children }: { id: string; title: string; badge?: string; children: React.ReactNode }) {
-  return (
-    <section id={id} style={{ marginBottom: 56 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>{title}</h2>
-        {badge && (
-          <span style={{
-            background: '#10b98122', color: '#6ee7b7', border: '1px solid #10b98155',
-            borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 600,
-          }}>{badge}</span>
-        )}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function P({ children }: { children: React.ReactNode }) {
-  return <p style={{ color: '#94a3b8', lineHeight: 1.75, marginBottom: 12, fontSize: 14 }}>{children}</p>;
-}
-
-function PropRow({ name, type, def, desc }: { name: string; type: string; def?: string; desc: string }) {
-  return (
-    <tr>
-      <td style={{ padding: '8px 12px', fontFamily: 'ui-monospace,monospace', fontSize: 12, color: '#a5b4fc', borderBottom: '1px solid #1e293b' }}>{name}</td>
-      <td style={{ padding: '8px 12px', fontFamily: 'ui-monospace,monospace', fontSize: 12, color: '#ffcb6b', borderBottom: '1px solid #1e293b' }}>{type}</td>
-      <td style={{ padding: '8px 12px', fontFamily: 'ui-monospace,monospace', fontSize: 12, color: '#64748b', borderBottom: '1px solid #1e293b' }}>{def ?? '—'}</td>
-      <td style={{ padding: '8px 12px', fontSize: 13, color: '#94a3b8', borderBottom: '1px solid #1e293b' }}>{desc}</td>
-    </tr>
-  );
-}
-
 // ── nav sidebar ───────────────────────────────────────────────────────────────
-const NAV = [
+type NavEntry = { id: string; label: string } | { group: string };
+
+const NAV: NavEntry[] = [
   { id: 'install', label: 'Install' },
-  { id: 'flowchart-api', label: 'Flowchart API' },
-  { id: 'sequence-api', label: 'Sequence API' },
+  { group: 'Diagram guides' },
+  { id: 'flowchart-guide', label: 'Flowchart' },
+  { id: 'question-guide', label: 'Question' },
+  { id: 'journey-guide', label: 'Journey' },
+  { id: 'sequence-guide', label: 'Sequence' },
+  { group: 'Builder APIs' },
+  { id: 'flowchart-api', label: 'flowchart()' },
+  { id: 'sequence-api', label: 'sequence()' },
   { id: 'model-api', label: 'Model (low-level)' },
+  { group: 'Reference' },
   { id: 'import', label: 'Import' },
   { id: 'export', label: 'Export formats' },
   { id: 'react-ui', label: 'React UI' },
@@ -103,29 +40,41 @@ export function DocsPage() {
     }}>
       {/* Sidebar nav */}
       <nav style={{
-        width: 200, flexShrink: 0, borderRight: '1px solid #1e293b',
+        width: 220, flexShrink: 0, borderRight: '1px solid #1e293b',
         overflowY: 'auto', padding: '28px 0',
         background: '#0d1421',
       }}>
         <div style={{ padding: '0 16px 16px', fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, textTransform: 'uppercase' }}>
           Documentation
         </div>
-        {NAV.map(n => (
-          <a
-            key={n.id}
-            href={`#${n.id}`}
-            style={{
-              display: 'block', padding: '7px 20px',
-              fontSize: 13, color: '#64748b', textDecoration: 'none',
-              borderLeft: '2px solid transparent',
-              transition: 'color 0.15s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#cbd5e1'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64748b'; }}
-          >
-            {n.label}
-          </a>
-        ))}
+        {NAV.map((n, i) => {
+          if ('group' in n) {
+            return (
+              <div key={`g-${i}`} style={{
+                padding: '14px 16px 4px', fontSize: 10, fontWeight: 700,
+                color: '#475569', letterSpacing: 1, textTransform: 'uppercase',
+              }}>
+                {n.group}
+              </div>
+            );
+          }
+          return (
+            <a
+              key={n.id}
+              href={`#${n.id}`}
+              style={{
+                display: 'block', padding: '7px 20px',
+                fontSize: 13, color: '#64748b', textDecoration: 'none',
+                borderLeft: '2px solid transparent',
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#cbd5e1'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64748b'; }}
+            >
+              {n.label}
+            </a>
+          );
+        })}
         <div style={{ height: 1, background: '#1e293b', margin: '16px 16px' }} />
         <a href={GITHUB} target="_blank" rel="noreferrer"
           style={{ display: 'block', padding: '7px 20px', fontSize: 13, color: '#64748b', textDecoration: 'none' }}>
@@ -161,10 +110,20 @@ export function DocsPage() {
             {CMT('# or')}{'\n'}
             {KW('npm')} install flowchart-sequence-designer
           </Code>
+          <P>
+            Four diagram types ship in one package — pick the one that fits the story you're telling.
+            Each gets its own deep-dive guide below.
+          </P>
         </Section>
 
+        {/* ── Diagram guides (one per variant) ── */}
+        <FlowchartGuide />
+        <QuestionGuide />
+        <JourneyGuide />
+        <SequenceGuide />
+
         {/* ── Flowchart API ── */}
-        <Section id="flowchart-api" title="Flowchart API" badge="programmatic">
+        <Section id="flowchart-api" title="flowchart() — builder reference" badge="programmatic">
           <P>Build a diagram with a fluent chainable API. Nodes and edges are validated at call time.</P>
           <Code raw={`import { flowchart } from 'flowchart-sequence-designer';
 
@@ -180,7 +139,7 @@ const diagram = flowchart('Order Flow')
 console.log(diagram.toMermaid());
 // → graph TD; start((Start))-->check{Payment valid?}; ...`}>
             {KW('import')} {'{ '}{FN('flowchart')}{' }'} {KW('from')} {STR("'flowchart-sequence-designer'")};{'\n\n'}
-            {KW('const')} diagram {OP('=')} {FN('flowchart')}({STR("'Order Flow'")}{'\n'}
+            {KW('const')} diagram {OP('=')} {FN('flowchart')}({STR("'Order Flow'")}){'\n'}
             {'  .'}{FN('node')}({STR("'start'")},   {STR("'Start'")},          {'{ shape: '}{STR("'circle'")}{' }'}){'\n'}
             {'  .'}{FN('node')}({STR("'check'")},   {STR("'Payment valid?'")}, {'{ shape: '}{STR("'diamond'")}{' }'}){'\n'}
             {'  .'}{FN('node')}({STR("'success'")}, {STR("'Confirm order'")},  {'{ shape: '}{STR("'rectangle'")}{' }'}){'\n'}
@@ -226,7 +185,7 @@ console.log(diagram.toMermaid());
         </Section>
 
         {/* ── Sequence API ── */}
-        <Section id="sequence-api" title="Sequence API" badge="programmatic">
+        <Section id="sequence-api" title="sequence() — builder reference" badge="programmatic">
           <P>Model actor-to-actor message flows. Actors auto-register from <code style={inlineCode}>.message()</code> calls — you can skip <code style={inlineCode}>.actor()</code> if you prefer.</P>
           <Code raw={`import { sequence } from 'flowchart-sequence-designer';
 
@@ -271,7 +230,7 @@ console.log(m.toMermaid());`}>
 
         {/* ── Import ── */}
         <Section id="import" title="Import">
-          <P>Parse existing Mermaid or JSON into a live model. Round-trip fidelity is guaranteed: <code style={inlineCode}>fromMermaid(diagram.toMermaid())</code> produces an equivalent model.</P>
+          <P>Parse existing Mermaid or JSON into a live model. Round-trip fidelity is guaranteed: <code style={inlineCode}>fromMermaid(diagram.toMermaid())</code> produces an equivalent model. The editor's <strong>↑ Import</strong> button opens a modal with paste + file upload that calls these under the hood.</P>
           <Code raw={`import { fromMermaid, fromJSON } from 'flowchart-sequence-designer';
 
 // Parse a Mermaid string
@@ -500,24 +459,4 @@ diagram.toPNG()       // → Promise<Blob>  (browser only)`}>
       </main>
     </div>
   );
-}
-
-// ── shared styles ─────────────────────────────────────────────────────────────
-const thStyle: React.CSSProperties = {
-  padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600,
-  color: '#64748b', borderBottom: '1px solid #1e293b', textTransform: 'uppercase', letterSpacing: 0.5,
-};
-const tdStyle: React.CSSProperties = {
-  padding: '8px 12px', color: '#94a3b8', borderBottom: '1px solid #0f172a',
-};
-const inlineCode: React.CSSProperties = {
-  fontFamily: 'ui-monospace,monospace', fontSize: '0.85em',
-  background: '#1e293b', padding: '1px 5px', borderRadius: 4, color: '#a5b4fc',
-};
-function linkPillStyle(bg: string, color: string): React.CSSProperties {
-  return {
-    display: 'inline-block', padding: '6px 14px', background: bg,
-    border: '1px solid #334155', borderRadius: 8, color, fontSize: 12,
-    textDecoration: 'none', fontWeight: 500,
-  };
 }
