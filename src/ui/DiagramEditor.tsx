@@ -2,10 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Toolbar } from './Toolbar.js';
 import { StepEditor } from './StepEditor.js';
 import { SequenceEditor } from './SequenceEditor.js';
-import { Minimap } from './Minimap.js';
 import { NodeNavigator } from './NodeNavigator.js';
-import { ContextMenu, type CtxMenuState as CtxMenu } from './ContextMenu.js';
-import { NodeShape, QuestionNode, EdgeLine } from './render.js';
+import { DiagramCanvas } from './DiagramCanvas.js';
+import type { CtxMenuState as CtxMenu } from './ContextMenu.js';
 import { useHistory } from './hooks/useHistory.js';
 import { usePrefersReducedMotion, useIsCoarsePointer } from './hooks/useSystemTheme.js';
 import { useCanvasWheel } from './hooks/useCanvasWheel.js';
@@ -14,13 +13,13 @@ import { useElementSize } from './hooks/useElementSize.js';
 import { useEditorTheme } from './hooks/useEditorTheme.js';
 import { useExporters } from './hooks/useExporters.js';
 import { useImporter } from './hooks/useImporter.js';
+import { useEditorKeyboard, type KeyCommand } from './hooks/useEditorKeyboard.js';
 import {
   NODE_H,
   GRID,
   nodeWidth,
   nodeDims,
   snap,
-  bezierPath,
 } from './layout.js';
 import { findSiblingSnap, type AlignGuideV, type AlignGuideH } from './alignment.js';
 import { nearestInDirection } from './traversal.js';
@@ -29,13 +28,10 @@ import type { DiagramModel, DiagramNode, DiagramEdge, ExportFormat, DiagramVaria
 import { nextId, makeIdSource } from '../core/ids.js';
 
 // ── Theme ──────────────────────────────────────────────────────────────────
-import { ACCENT as C, type ThemeColors, lightTheme, darkTheme, variantAccent } from './theme.js';
+import { ACCENT as C, type ThemeColors, lightTheme, darkTheme, variantAccent, shadowColor as themeShadow, arrowColor as themeArrow } from './theme.js';
 export type { ThemeColors } from './theme.js';
 
-// Static styles hoisted to module scope to avoid re-allocating an object per
-// render in the node/edge map loops.
-const STYLE_LABEL: React.CSSProperties = { pointerEvents: 'none', userSelect: 'none' };
-const STYLE_LIVE_PORT: React.CSSProperties = { opacity: 0.85, pointerEvents: 'none' };
+// Static styles hoisted to module scope.
 const STYLE_SR_ONLY: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 };
 const STYLE_FLEX_ROW: React.CSSProperties = { flex: 1, display: 'flex', overflow: 'hidden' };
 
@@ -255,72 +251,68 @@ function FlowchartEditor({
   }, [ctxMenu]);
 
   // Global keyboard shortcuts
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      // Don't hijack keys when the user is typing in an input / textarea / contentEditable.
-      const tgt = e.target as HTMLElement | null;
-      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
-
-      const ctrl = e.ctrlKey || e.metaKey;
-      if (ctrl && e.key === 'z') { e.preventDefault(); undo(); return; }
-      if (ctrl && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); return; }
-      if (ctrl && e.key === '0') { e.preventDefault(); reCenter(); return; }
-      if (ctrl && (e.key === 'd' || e.key === 'D')) {
-        if (selectedSet.size > 0) { e.preventDefault(); duplicateIds(Array.from(selectedSet)); }
-        return;
-      }
-
-      if (ctrl && (e.key === 'c' || e.key === 'C')) {
-        if (selectedSet.size > 0) {
-          e.preventDefault();
-          const ids = new Set(selectedSet);
-          const nodes = model.nodes.filter(n => ids.has(n.id));
-          const edges = model.edges.filter(ed => ids.has(ed.from) && ids.has(ed.to));
-          clipboardRef.current = {
-            nodes: nodes.map(n => ({ ...n })),
-            edges: edges.map(ed => ({ ...ed })),
-          };
-        }
-        return;
-      }
-      if (ctrl && (e.key === 'v' || e.key === 'V')) {
+  const keyCommands: KeyCommand[] = [
+    { match: e => (e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey, run: () => { undo(); return true; } },
+    { match: e => (e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z')), run: () => { redo(); return true; } },
+    { match: e => (e.ctrlKey || e.metaKey) && e.key === '0', run: () => { reCenter(); return true; } },
+    {
+      match: e => (e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D') && selectedSet.size > 0,
+      run: () => { duplicateIds(Array.from(selectedSet)); return true; },
+    },
+    {
+      match: e => (e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C') && selectedSet.size > 0,
+      run: () => {
+        const ids = new Set(selectedSet);
+        const nodes = model.nodes.filter(n => ids.has(n.id));
+        const edges = model.edges.filter(ed => ids.has(ed.from) && ids.has(ed.to));
+        clipboardRef.current = {
+          nodes: nodes.map(n => ({ ...n })),
+          edges: edges.map(ed => ({ ...ed })),
+        };
+        return true;
+      },
+    },
+    {
+      match: e => (e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V'),
+      run: () => {
         const clip = clipboardRef.current;
-        if (clip && clip.nodes.length > 0) {
-          e.preventDefault();
-          const idMap = new Map<string, string>();
-          const nextNode = makeIdSource('node', model.nodes);
-          const nextEdge = makeIdSource('e', model.edges);
-          const newNodes: DiagramNode[] = clip.nodes.map(n => {
-            const newId = nextNode();
-            idMap.set(n.id, newId);
-            return { ...n, id: newId, x: (n.x ?? 0) + 24, y: (n.y ?? 0) + 24 };
-          });
-          const newEdges: DiagramEdge[] = clip.edges.map(ed => ({
-            ...ed, id: nextEdge(),
-            from: idMap.get(ed.from) ?? ed.from,
-            to: idMap.get(ed.to) ?? ed.to,
-          }));
-          const m = { ...model, nodes: [...model.nodes, ...newNodes], edges: [...model.edges, ...newEdges] };
-          applyAndPush(m);
-          const newIds = newNodes.map(n => n.id);
-          setSelected(newIds[newIds.length - 1]);
-          setSelectedSet(new Set(newIds));
-          setAnnouncement(`Pasted ${newIds.length} ${variantLabel.toLowerCase()}${newIds.length === 1 ? '' : 's'}.`);
-        }
-        return;
-      }
-
-      if (e.key === 'Escape') {
+        if (!clip || clip.nodes.length === 0) return false;
+        const idMap = new Map<string, string>();
+        const nextNode = makeIdSource('node', model.nodes);
+        const nextEdge = makeIdSource('e', model.edges);
+        const newNodes: DiagramNode[] = clip.nodes.map(n => {
+          const newId = nextNode();
+          idMap.set(n.id, newId);
+          return { ...n, id: newId, x: (n.x ?? 0) + 24, y: (n.y ?? 0) + 24 };
+        });
+        const newEdges: DiagramEdge[] = clip.edges.map(ed => ({
+          ...ed, id: nextEdge(),
+          from: idMap.get(ed.from) ?? ed.from,
+          to: idMap.get(ed.to) ?? ed.to,
+        }));
+        const m = { ...model, nodes: [...model.nodes, ...newNodes], edges: [...model.edges, ...newEdges] };
+        applyAndPush(m);
+        const newIds = newNodes.map(n => n.id);
+        setSelected(newIds[newIds.length - 1]);
+        setSelectedSet(new Set(newIds));
+        setAnnouncement(`Pasted ${newIds.length} ${variantLabel.toLowerCase()}${newIds.length === 1 ? '' : 's'}.`);
+        return true;
+      },
+    },
+    {
+      match: e => e.key === 'Escape',
+      run: () => {
         if (ctxMenu) setCtxMenu(null);
         if (liveEdge) setLiveEdge(null);
         if (editingId) setEditingId(null);
         if (boxSel) setBoxSel(null);
         if (selectedSet.size > 0) clearSelection();
-        return;
-      }
-
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedSet.size > 0) {
-        e.preventDefault();
+        return true;
+      },
+    },
+    {
+      match: e => (e.key === 'Delete' || e.key === 'Backspace') && selectedSet.size > 0,
+      run: () => {
         const ids = new Set(selectedSet);
         const updated = {
           ...model,
@@ -330,35 +322,36 @@ function FlowchartEditor({
         applyAndPush(updated);
         clearSelection();
         setAnnouncement(`Deleted ${ids.size} ${variantLabel.toLowerCase()}${ids.size === 1 ? '' : 's'}.`);
-        return;
-      }
-
-      if (selectedSet.size > 0 && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-        const dirKey = e.key === 'ArrowLeft' ? 'left' : e.key === 'ArrowRight' ? 'right' : e.key === 'ArrowUp' ? 'up' : 'down';
-
-        // Alt+Arrow → traverse the graph: jump selection to the nearest neighbor in that direction.
-        if (e.altKey && selected) {
-          e.preventDefault();
-          const origin = model.nodes.find(n => n.id === selected);
-          if (!origin) return;
-          const od = nodeDims(origin, variant);
-          const ox = (origin.x ?? 0) + od.w / 2;
-          const oy = (origin.y ?? 0) + od.h / 2;
-          const candidates = model.nodes
-            .filter(n => n.id !== selected)
-            .map(n => {
-              const d = nodeDims(n, variant);
-              return { id: n.id, x: (n.x ?? 0) + d.w / 2, y: (n.y ?? 0) + d.h / 2 };
-            });
-          const nextId = nearestInDirection(ox, oy, dirKey, candidates);
-          if (nextId) {
-            selectOne(nextId);
-            setAnnouncement(`Selected ${model.nodes.find(n => n.id === nextId)?.label ?? ''}.`);
-          }
-          return;
+        return true;
+      },
+    },
+    {
+      match: e => selectedSet.size > 0 && e.altKey && !!selected && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight'),
+      run: (e) => {
+        const dirKey = e.key === 'ArrowLeft' ? 'left' : e.key === 'ArrowRight' ? 'right' : e.key === 'ArrowUp' ? 'up' : 'down' as const;
+        const origin = model.nodes.find(n => n.id === selected);
+        if (!origin) return false;
+        const od = nodeDims(origin, variant);
+        const ox = (origin.x ?? 0) + od.w / 2;
+        const oy = (origin.y ?? 0) + od.h / 2;
+        const candidates = model.nodes
+          .filter(n => n.id !== selected)
+          .map(n => {
+            const d = nodeDims(n, variant);
+            return { id: n.id, x: (n.x ?? 0) + d.w / 2, y: (n.y ?? 0) + d.h / 2 };
+          });
+        const nextNodeId = nearestInDirection(ox, oy, dirKey, candidates);
+        if (nextNodeId) {
+          selectOne(nextNodeId);
+          setAnnouncement(`Selected ${model.nodes.find(n => n.id === nextNodeId)?.label ?? ''}.`);
         }
-
-        e.preventDefault();
+        return true;
+      },
+    },
+    {
+      match: e => selectedSet.size > 0 && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight'),
+      run: (e) => {
+        const dirKey = e.key === 'ArrowLeft' ? 'left' : e.key === 'ArrowRight' ? 'right' : e.key === 'ArrowUp' ? 'up' : 'down' as const;
         const step = e.shiftKey ? GRID * 4 : GRID;
         const dx = dirKey === 'left' ? -step : dirKey === 'right' ? step : 0;
         const dy = dirKey === 'up' ? -step : dirKey === 'down' ? step : 0;
@@ -370,12 +363,11 @@ function FlowchartEditor({
             : n),
         };
         applyAndPush(updated);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [undo, redo, reCenter, selected, selectedSet, ctxMenu, liveEdge, editingId, boxSel, model, applyAndPush, duplicateNode, clearSelection]);
+        return true;
+      },
+    },
+  ];
+  useEditorKeyboard(keyCommands, [undo, redo, reCenter, selected, selectedSet, ctxMenu, liveEdge, editingId, boxSel, model, applyAndPush, duplicateNode, clearSelection]);
 
   const toCanvas = useCallback((clientX: number, clientY: number) => {
     const rect = svgRef.current!.getBoundingClientRect();
@@ -693,8 +685,8 @@ function FlowchartEditor({
 
   const acc = variantAccent(variant, isDark);
   const variantLabel = variant === 'question' ? 'Question' : variant === 'journey' ? 'Step' : 'Node';
-  const shadowColor = isDark ? 'rgba(0,0,0,0.55)' : 'rgba(15,23,42,0.09)';
-  const arrowColor = isDark ? '#64748b' : '#94a3b8';
+  const shadowClr = themeShadow(isDark);
+  const arrowClr = themeArrow(isDark);
   const amberArrow = isDark ? C.amberDark : C.amber;
 
   return (
@@ -758,234 +750,62 @@ function FlowchartEditor({
           onSelect={jumpToNode}
         />
 
-        <div ref={containerRef} style={{ flex: 1, overflow: 'hidden', position: 'relative', background: t.canvas }}>
-          <svg
-            ref={svgRef}
-            width="100%" height="100%"
-            role="application"
-            aria-label={`${variantLabel} diagram editor. ${model.nodes.length} ${variantLabel.toLowerCase()}s, ${model.edges.length} connections. Scroll to zoom, drag to pan, click a ${variantLabel.toLowerCase()} to select.`}
-            tabIndex={0}
-            style={{ display: 'block', cursor: pan ? 'grabbing' : drag ? 'grabbing' : liveEdge ? 'crosshair' : 'default', userSelect: 'none', outline: 'none' }}
-            onMouseDown={onSvgMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseUp}
-            onContextMenu={onSvgContextMenu}
-          >
-            <defs>
-              <style>{reducedMotion ? `
-                .edge-flow { stroke-dasharray: 0; }
-                .edge-flow-amber { stroke-dasharray: 0; }
-                .edge-live { stroke-dasharray: 4 4; }
-              ` : `
-                @keyframes edgeFlow { to { stroke-dashoffset: -13; } }
-                @keyframes edgeFlowFast { to { stroke-dashoffset: -13; } }
-                .edge-flow { stroke-dasharray: 8 5; animation: edgeFlow 0.9s linear infinite; }
-                .edge-flow-amber { stroke-dasharray: 6 4; animation: edgeFlowFast 0.65s linear infinite; }
-                .edge-live { stroke-dasharray: 7 5; animation: edgeFlow 0.55s linear infinite; }
-              `}</style>
-              <pattern id="dots" width={GRID} height={GRID} patternUnits="userSpaceOnUse">
-                <circle cx={GRID / 2} cy={GRID / 2} r={1.1} fill={t.dot} />
-              </pattern>
-              <filter id="nodeShadow" x="-25%" y="-25%" width="150%" height="160%">
-                <feDropShadow dx="0" dy="3" stdDeviation="5" floodColor={shadowColor} floodOpacity="1" />
-              </filter>
-              <marker id="arrowhead" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0.5 L9,3.5 L0,6.5 L2.2,3.5 Z" fill={arrowColor} />
-              </marker>
-              <marker id="arrowAmber" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0.5 L9,3.5 L0,6.5 L2.2,3.5 Z" fill={amberArrow} />
-              </marker>
-              <marker id="arrowLive" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0.5 L9,3.5 L0,6.5 L2.2,3.5 Z" fill={acc.color} />
-              </marker>
-            </defs>
-
-            <rect width="100%" height="100%" fill="url(#dots)" data-bg="1" />
-
-            <g transform={`translate(${transform.x},${transform.y}) scale(${transform.scale})`}>
-              {model.edges.map(e => (
-                <EdgeLine
-                  key={e.id} edge={e} nodes={model.nodes} variant={variant} t={t} isDark={isDark} acc={acc}
-                  editing={editingEdgeId === e.id}
-                  editValue={editEdgeLabel}
-                  onEditChange={setEditEdgeLabel}
-                  onEditCommit={commitEdgeEdit}
-                  onEditCancel={() => setEditingEdgeId(null)}
-                  onDoubleClick={beginEditEdge}
-                  onContextMenu={onEdgeContextMenu}
-                  onWaypointDown={(ev, edgeId) => setWaypointDrag(edgeId)}
-                />
-              ))}
-
-              {liveEdge && (() => {
-                const d = bezierPath(liveEdge.fromX, liveEdge.fromY, liveEdge.toX, liveEdge.toY, liveEdge.exitDir);
-                return <path d={d} fill="none" stroke={acc.color} strokeWidth={2} strokeLinecap="round" className="edge-live" opacity={0.8} markerEnd="url(#arrowLive)" />;
-              })()}
-
-              {alignGuides?.x && (
-                <line
-                  x1={alignGuides.x.pos} x2={alignGuides.x.pos}
-                  y1={alignGuides.x.minY} y2={alignGuides.x.maxY}
-                  stroke={acc.color} strokeWidth={1 / transform.scale}
-                  strokeDasharray={`${4 / transform.scale} ${3 / transform.scale}`}
-                  opacity={0.85} pointerEvents="none"
-                />
-              )}
-              {alignGuides?.y && (
-                <line
-                  y1={alignGuides.y.pos} y2={alignGuides.y.pos}
-                  x1={alignGuides.y.minX} x2={alignGuides.y.maxX}
-                  stroke={acc.color} strokeWidth={1 / transform.scale}
-                  strokeDasharray={`${4 / transform.scale} ${3 / transform.scale}`}
-                  opacity={0.85} pointerEvents="none"
-                />
-              )}
-
-              {model.nodes.map((node, idx) => {
-                const isHovered = hoveredId === node.id;
-                const isQuestion = variant === 'question';
-                const { w: nW, h: nH } = nodeDims(node, variant);
-                const isSelected = selectedSet.has(node.id);
-
-                return (
-                  <g
-                    key={node.id}
-                    transform={`translate(${node.x ?? 0},${node.y ?? 0})`}
-                    role="button"
-                    aria-label={`${variantLabel} ${variant === 'journey' ? idx + 1 + ': ' : ''}${node.label}${isSelected ? ', selected' : ''}`}
-                    style={{ cursor: drag?.nodeId === node.id ? 'grabbing' : 'grab' }}
-                    onMouseDown={e => onNodeMouseDown(e, node.id)}
-                    onMouseUp={e => onNodeMouseUp(e, node.id)}
-                    onDoubleClick={e => onNodeDblClick(e, node.id)}
-                    onContextMenu={e => onNodeContextMenu(e, node.id)}
-                    onMouseEnter={() => setHoveredId(node.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                  >
-                    <title>{`${variantLabel}: ${node.label}`}</title>
-                    {isQuestion ? (
-                      <QuestionNode node={node} selected={isSelected} edges={model.edges} isDark={isDark} onAnswerPortDown={onAnswerPortDown} qW={nW} />
-                    ) : (
-                      <>
-                        <NodeShape node={node} selected={isSelected} variant={variant} stepNumber={variant === 'journey' ? idx + 1 : undefined} t={t} isDark={isDark} w={nW} />
-                        {editingId === node.id ? (
-                          <foreignObject x={6} y={6} width={nW - 12} height={NODE_H - 12}>
-                            <input
-                              autoFocus
-                              value={editLabel}
-                              onChange={e => setEditLabel(e.target.value)}
-                              onBlur={commitEdit}
-                              onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditingId(null); }}
-                              style={{ width: '100%', height: '100%', border: 'none', borderRadius: 6, outline: `2px solid ${acc.color}`, textAlign: 'center', fontSize: 13, fontWeight: 500, background: t.inputBg, boxSizing: 'border-box', padding: '0 6px', fontFamily: 'inherit', color: t.inputText }}
-                            />
-                          </foreignObject>
-                        ) : (
-                          <text x={nW / 2} y={NODE_H / 2 + 5} textAnchor="middle" fontSize={13} fontWeight="500" fontFamily="ui-sans-serif,system-ui,sans-serif" fill={isSelected ? acc.color : t.textPrimary} style={STYLE_LABEL}>
-                            {node.label}
-                          </text>
-                        )}
-                        <circle
-                          cx={nW / 2} cy={NODE_H + 1} r={portR}
-                          fill={acc.color} stroke={isDark ? '#0f172a' : 'white'} strokeWidth={2}
-                          style={{ cursor: 'crosshair', opacity: isHovered || isCoarse ? 1 : 0, transition: 'opacity 0.15s', pointerEvents: (isHovered || isCoarse) ? 'all' : 'none', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.25))' }}
-                          onMouseDown={e => onPortMouseDown(e, node.id)}
-                        />
-                      </>
-                    )}
-
-                    {liveEdge && liveEdge.fromId !== node.id && (
-                      <circle cx={nW / 2} cy={-1} r={portR} fill={acc.color} stroke={isDark ? '#0f172a' : 'white'} strokeWidth={2} style={STYLE_LIVE_PORT} />
-                    )}
-                  </g>
-                );
-              })}
-            </g>
-          </svg>
-
-          {boxSel && Math.abs(boxSel.cx - boxSel.sx) + Math.abs(boxSel.cy - boxSel.sy) > 4 && containerRef.current && (() => {
-            const rect = containerRef.current.getBoundingClientRect();
-            const left = Math.min(boxSel.sx, boxSel.cx) - rect.left;
-            const top = Math.min(boxSel.sy, boxSel.cy) - rect.top;
-            const w = Math.abs(boxSel.cx - boxSel.sx);
-            const h = Math.abs(boxSel.cy - boxSel.sy);
-            return (
-              <div
-                style={{
-                  position: 'absolute', left, top, width: w, height: h,
-                  border: `1px dashed ${acc.color}`,
-                  background: isDark ? 'rgba(99,102,241,0.10)' : 'rgba(99,102,241,0.08)',
-                  pointerEvents: 'none', borderRadius: 4,
-                }}
-              />
-            );
-          })()}
-
-          {model.nodes.length === 0 && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', gap: 8 }}>
-              <div style={{ fontSize: 36, opacity: 0.1, color: t.textPrimary }}>{variant === 'question' ? '?' : variant === 'journey' ? '↗' : '⬡'}</div>
-              <div style={{ fontSize: 13, color: t.textMuted, fontWeight: 500 }}>Click <strong style={{ color: acc.color }}>+ {variantLabel}</strong> to start</div>
-            </div>
-          )}
-
-          {model.nodes.length > 0 && viewport.w > 0 && (
-            <Minimap
-              model={model}
-              viewportW={viewport.w}
-              viewportH={viewport.h}
-              transform={transform}
-              isDark={isDark}
-              accentColor={acc.color}
-              measureNode={(n) => nodeDims(n, variant)}
-              onCenterOn={(cx, cy) => {
-                setTransform(tr => ({ ...tr, x: viewport.w / 2 - cx * tr.scale, y: viewport.h / 2 - cy * tr.scale }));
-              }}
-            />
-          )}
-
-          {/* Context menu */}
-          {ctxMenu && (() => {
-            const ctxEdge = ctxMenu.edgeId ? model.edges.find(e => e.id === ctxMenu.edgeId) : undefined;
-            return <ContextMenu
-              x={ctxMenu.x} y={ctxMenu.y}
-              nodeId={ctxMenu.nodeId} edgeId={ctxMenu.edgeId}
-              isDark={isDark} t={t} acc={acc}
-              canUndo={history.canUndo}
-              canRedo={history.canRedo}
-              onUndo={() => { undo(); setCtxMenu(null); }}
-              onRedo={() => { redo(); setCtxMenu(null); }}
-              onReCenter={() => { reCenter(); setCtxMenu(null); }}
-              onAddNode={() => {
-                const rect = svgRef.current!.getBoundingClientRect();
-                const cx = (ctxMenu.x - rect.left - transform.x) / transform.scale;
-                const cy = (ctxMenu.y - rect.top - transform.y) / transform.scale;
-                addNode({ x: cx, y: cy }); setCtxMenu(null);
-              }}
-              onDuplicate={() => { if (ctxMenu.nodeId) { duplicateNode(ctxMenu.nodeId); setCtxMenu(null); } }}
-              onRename={() => {
-                if (ctxMenu.nodeId) {
-                  const node = model.nodes.find(n => n.id === ctxMenu.nodeId)!;
-                  setEditingId(ctxMenu.nodeId); setEditLabel(node.label); setCtxMenu(null);
-                }
-              }}
-              onDelete={() => { if (ctxMenu.nodeId) { deleteNode(ctxMenu.nodeId); setCtxMenu(null); } }}
-              onDisconnect={() => {
-                if (ctxMenu.nodeId) {
-                  const m = { ...model, edges: model.edges.filter(e => e.from !== ctxMenu.nodeId && e.to !== ctxMenu.nodeId) };
-                  applyAndPush(m); setCtxMenu(null);
-                }
-              }}
-              currentEdgeStyle={ctxEdge?.style ?? 'solid'}
-              currentEdgeArrow={ctxEdge?.arrowhead ?? 'arrow'}
-              edgeHasWaypoint={!!ctxEdge?.waypoint}
-              onEdgeRename={() => { if (ctxMenu.edgeId) { beginEditEdge(ctxMenu.edgeId); setCtxMenu(null); } }}
-              onEdgeStyle={(s) => { if (ctxMenu.edgeId) { setEdgeStyle(ctxMenu.edgeId, s); setCtxMenu(null); } }}
-              onEdgeArrowhead={(a) => { if (ctxMenu.edgeId) { setEdgeArrowhead(ctxMenu.edgeId, a); setCtxMenu(null); } }}
-              onEdgeDelete={() => { if (ctxMenu.edgeId) { deleteEdge(ctxMenu.edgeId); setCtxMenu(null); } }}
-              onEdgeResetRouting={() => { if (ctxMenu.edgeId) { resetEdgeRouting(ctxMenu.edgeId); setCtxMenu(null); } }}
-              containerRef={containerRef}
-            />;
-          })()}
-        </div>
+        <DiagramCanvas
+          model={model} variant={variant} variantLabel={variantLabel}
+          t={t} isDark={isDark} acc={acc}
+          transform={transform} setTransform={setTransform}
+          selected={selected} selectedSet={selectedSet}
+          hoveredId={hoveredId} setHoveredId={setHoveredId}
+          drag={drag} pan={pan} liveEdge={liveEdge} boxSel={boxSel}
+          alignGuides={alignGuides}
+          editingEdgeId={editingEdgeId} editEdgeLabel={editEdgeLabel}
+          setEditEdgeLabel={setEditEdgeLabel} commitEdgeEdit={commitEdgeEdit}
+          setEditingEdgeId={setEditingEdgeId} beginEditEdge={beginEditEdge}
+          onEdgeContextMenu={onEdgeContextMenu} setWaypointDrag={setWaypointDrag}
+          editingId={editingId} editLabel={editLabel} setEditLabel={setEditLabel}
+          commitEdit={commitEdit} setEditingId={setEditingId}
+          onNodeMouseDown={onNodeMouseDown} onNodeMouseUp={onNodeMouseUp}
+          onNodeDblClick={onNodeDblClick} onNodeContextMenu={onNodeContextMenu}
+          onPortMouseDown={onPortMouseDown} onAnswerPortDown={onAnswerPortDown}
+          onSvgMouseDown={onSvgMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
+          onSvgContextMenu={onSvgContextMenu}
+          reducedMotion={reducedMotion} isCoarse={isCoarse} portR={portR}
+          shadowClr={shadowClr} arrowClr={arrowClr} amberArrow={amberArrow}
+          viewport={viewport}
+          svgRef={svgRef} containerRef={containerRef}
+          ctxMenu={ctxMenu} history={history}
+          ctxEdgeStyle={(ctxMenu?.edgeId ? model.edges.find(e => e.id === ctxMenu.edgeId) : undefined)?.style ?? 'solid'}
+          ctxEdgeArrow={((ctxMenu?.edgeId ? model.edges.find(e => e.id === ctxMenu.edgeId) : undefined)?.arrowhead ?? 'arrow') as 'arrow' | 'none'}
+          ctxEdgeHasWaypoint={!!(ctxMenu?.edgeId ? model.edges.find(e => e.id === ctxMenu.edgeId) : undefined)?.waypoint}
+          onCtxUndo={() => { undo(); setCtxMenu(null); }}
+          onCtxRedo={() => { redo(); setCtxMenu(null); }}
+          onCtxReCenter={() => { reCenter(); setCtxMenu(null); }}
+          onCtxAddNode={() => {
+            const rect = svgRef.current!.getBoundingClientRect();
+            const cx = (ctxMenu!.x - rect.left - transform.x) / transform.scale;
+            const cy = (ctxMenu!.y - rect.top - transform.y) / transform.scale;
+            addNode({ x: cx, y: cy }); setCtxMenu(null);
+          }}
+          onCtxDuplicate={() => { if (ctxMenu?.nodeId) { duplicateNode(ctxMenu.nodeId); setCtxMenu(null); } }}
+          onCtxRename={() => {
+            if (ctxMenu?.nodeId) {
+              const node = model.nodes.find(n => n.id === ctxMenu.nodeId)!;
+              setEditingId(ctxMenu.nodeId); setEditLabel(node.label); setCtxMenu(null);
+            }
+          }}
+          onCtxDelete={() => { if (ctxMenu?.nodeId) { deleteNode(ctxMenu.nodeId); setCtxMenu(null); } }}
+          onCtxDisconnect={() => {
+            if (ctxMenu?.nodeId) {
+              const m = { ...model, edges: model.edges.filter(e => e.from !== ctxMenu.nodeId && e.to !== ctxMenu.nodeId) };
+              applyAndPush(m); setCtxMenu(null);
+            }
+          }}
+          onCtxEdgeRename={() => { if (ctxMenu?.edgeId) { beginEditEdge(ctxMenu.edgeId); setCtxMenu(null); } }}
+          onCtxEdgeStyle={(s) => { if (ctxMenu?.edgeId) { setEdgeStyle(ctxMenu.edgeId, s); setCtxMenu(null); } }}
+          onCtxEdgeArrowhead={(a) => { if (ctxMenu?.edgeId) { setEdgeArrowhead(ctxMenu.edgeId, a); setCtxMenu(null); } }}
+          onCtxEdgeDelete={() => { if (ctxMenu?.edgeId) { deleteEdge(ctxMenu.edgeId); setCtxMenu(null); } }}
+          onCtxEdgeResetRouting={() => { if (ctxMenu?.edgeId) { resetEdgeRouting(ctxMenu.edgeId); setCtxMenu(null); } }}
+        />
 
         {selected && (
           <StepEditor key={selected} nodeId={selected} model={model} onModelChange={m => { applyAndPush(m); }} variant={variant} isDark={isDark} t={t} acc={acc} />

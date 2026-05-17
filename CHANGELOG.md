@@ -74,6 +74,19 @@ Versioning: [Semantic Versioning](https://semver.org/).
   viewport tracking) — and added a `nodeDims(node, variant)` helper to
   `layout.ts` that collapses the repeated `variant === 'question' ? ... : ...`
   width/height ternary. `DiagramEditor.tsx` is now ~990 lines.
+- Extracted `useEditorKeyboard` hook from both `DiagramEditor` and
+  `SequenceEditor` — declarative `KeyCommand[]` pattern replaces monolithic
+  `useEffect` keyboard handlers. Each command is independently testable.
+- Moved `arrowColor()` and `shadowColor()` derivation into `theme.ts` as
+  reusable functions; both editors import them instead of inline-deriving hex
+  values from the dark-mode flag.
+- Hoisted static inline `style={{}}` objects out of SVG `.map()` render hot
+  paths in both editors. Static styles are now module-level constants; dynamic
+  ones remain per-render but no longer allocate inside the loop.
+- Extracted `DiagramCanvas` (346 LOC) and `SequenceCanvas` (234 LOC) from
+  their parent editors. Each editor is now an orchestrator (state + handlers)
+  while the canvas component owns all SVG rendering. `DiagramEditor.tsx` is
+  now ~836 lines; `SequenceEditor.tsx` is ~476 lines.
 
 ### Fixed
 - Sequence diagram new-message ID collision. `addMessage()` minted IDs from

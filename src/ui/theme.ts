@@ -94,6 +94,21 @@ export interface VariantAccent {
   glow: string;
 }
 
+/**
+ * Derived shadow color used in SVG `<feDropShadow>` filters. Dark mode needs
+ * a heavier shadow to remain visible against the dark canvas.
+ */
+export function shadowColor(isDark: boolean): string {
+  return isDark ? 'rgba(0,0,0,0.55)' : 'rgba(15,23,42,0.09)';
+}
+
+/**
+ * Default arrowhead fill color, matching the edge palette for the current mode.
+ */
+export function arrowColor(isDark: boolean): string {
+  return isDark ? '#64748b' : '#94a3b8';
+}
+
 export function variantAccent(variant: DiagramVariant, isDark: boolean): VariantAccent {
   if (variant === 'question') {
     return isDark

@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DiagramModel, SequenceMessage, ExportFormat } from '../core/types.js';
 import { Toolbar } from './Toolbar.js';
+import { SequenceCanvas } from './SequenceCanvas.js';
 import { useEditorTheme } from './hooks/useEditorTheme.js';
 import { useExporters } from './hooks/useExporters.js';
 import { useImporter } from './hooks/useImporter.js';
 import { presetSequenceModel } from './presets.js';
 import { nextId } from '../core/ids.js';
+import { useEditorKeyboard, type KeyCommand } from './hooks/useEditorKeyboard.js';
 
 const INDIGO = '#4f46e5';
 const INDIGO_SOFT = '#eef2ff';
@@ -272,22 +274,13 @@ export function SequenceEditor({
   }, [messages, model, applyAndPush]);
 
   // ── Keyboard ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const tgt = e.target as HTMLElement | null;
-      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
-      const ctrl = e.ctrlKey || e.metaKey;
-      if (ctrl && e.key === 'z') { e.preventDefault(); undo(); return; }
-      if (ctrl && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); return; }
-      if (e.key === 'Escape') { setSelected(null); setEditingId(null); return; }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selected) {
-        e.preventDefault();
-        removeMessage(selected);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [undo, redo, selected]);
+  const keyCommands: KeyCommand[] = [
+    { match: e => (e.ctrlKey || e.metaKey) && e.key === 'z', run: () => { undo(); return true; } },
+    { match: e => (e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z')), run: () => { redo(); return true; } },
+    { match: e => e.key === 'Escape', run: () => { setSelected(null); setEditingId(null); return true; } },
+    { match: e => (e.key === 'Delete' || e.key === 'Backspace') && !!selected, run: () => { removeMessage(selected!); return true; } },
+  ];
+  useEditorKeyboard(keyCommands, [undo, redo, selected]);
 
   // ── Export / import ─────────────────────────────────────────────────────
   const handleExport = useExporters(model, onExport, 'sequence');
@@ -340,18 +333,6 @@ export function SequenceEditor({
     };
   }, [drag, messages.length, reorderMessage]);
 
-  // Visual order during a drag: messages stay in model order, only the
-  // dragged row is virtually relocated. Real array isn't touched until mouseup.
-  const visualMessages = useMemo(() => {
-    if (!drag?.active) return messages;
-    const idx = messages.findIndex(m => m.id === drag.id);
-    if (idx < 0) return messages;
-    const next = messages.slice();
-    const [moved] = next.splice(idx, 1);
-    next.splice(drag.targetIdx, 0, moved);
-    return next;
-  }, [messages, drag]);
-
   // ── Render ──────────────────────────────────────────────────────────────
   const selectedMsg = selected ? messages.find(m => m.id === selected) : null;
 
@@ -381,153 +362,16 @@ export function SequenceEditor({
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Canvas */}
         <div style={{ flex: 1, overflow: 'auto', background: t.canvas, position: 'relative' }}>
-          {actors.length === 0 && messages.length === 0 ? (
-            <div style={{
-              position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: 10,
-              color: t.textMuted, pointerEvents: 'none',
-            }}>
-              <div style={{ fontSize: 36, opacity: 0.15, color: t.textPrimary }}>↔</div>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>
-                Click <strong style={{ color: INDIGO }}>+ Actor</strong> then <strong style={{ color: INDIGO }}>+ Message</strong> to start
-              </div>
-            </div>
-          ) : (
-            <svg
-              ref={svgRef}
-              width={totalW} height={totalH}
-              style={{ display: 'block', cursor: drag?.active ? 'grabbing' : 'default', userSelect: 'none' }}
-            >
-              <defs>
-                <pattern id="seqdots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-                  <circle cx={12} cy={12} r={1.1} fill={t.dot} />
-                </pattern>
-                <filter id="seqShadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx={0} dy={3} stdDeviation={5} floodColor={isDark ? 'rgba(0,0,0,0.5)' : 'rgba(15,23,42,0.09)'} />
-                </filter>
-                <marker id="seqArrow" markerWidth={9} markerHeight={7} refX={8.5} refY={3.5} orient="auto" markerUnits="strokeWidth">
-                  <path d="M0,0.5 L9,3.5 L0,6.5 L2.2,3.5 Z" fill={t.arrow} />
-                </marker>
-              </defs>
-
-              <rect width={totalW} height={totalH} fill="url(#seqdots)" />
-
-              {/* Lifelines */}
-              {actors.map(name => {
-                const x = actorX(name);
-                const top = HEADER_PAD + HEADER_H;
-                return (
-                  <line
-                    key={`life-${name}`}
-                    x1={x} x2={x}
-                    y1={top + 4} y2={totalH - 24}
-                    stroke={t.lifeline} strokeWidth={1.25} strokeDasharray="5 5"
-                  />
-                );
-              })}
-
-              {/* Messages (arrows + label rows) — rendered in visual order
-                  so the dragged row previews its new slot without mutating
-                  the underlying messages array until the user releases. */}
-              {visualMessages.map((msg, idx) => {
-                const y = msgY(idx);
-                const fromX = actorX(msg.from);
-                const toX = actorX(msg.to);
-                const selectedHere = selected === msg.id;
-                const isDragging = drag?.active && drag.id === msg.id;
-                const isSelf = msg.from === msg.to;
-                const stroke = selectedHere ? INDIGO : t.arrow;
-                const dash = msg.style === 'dashed' ? '6,4' : undefined;
-                const cursor = drag?.active ? 'grabbing' : 'grab';
-                const groupOpacity = isDragging ? 0.85 : 1;
-
-                if (isSelf) {
-                  const startX = fromX;
-                  const loopW = 36;
-                  const loopY = y - 6;
-                  const d = `M ${startX} ${loopY} C ${startX + loopW} ${loopY}, ${startX + loopW} ${loopY + 24}, ${startX} ${loopY + 24}`;
-                  return (
-                    <g key={msg.id} onMouseDown={(e) => onRowMouseDown(e, msg.id)} style={{ cursor, opacity: groupOpacity }}>
-                      {(selectedHere || isDragging) && (
-                        <rect x={SIDE_PAD - 8} y={y - 22} width={totalW - (SIDE_PAD - 8) * 2} height={ROW_H - 12} rx={10}
-                          fill={INDIGO_SOFT} opacity={isDark ? 0.18 : 0.6} />
-                      )}
-                      <path d={d} fill="none" stroke={stroke} strokeWidth={1.5} strokeDasharray={dash} markerEnd="url(#seqArrow)" />
-                      <text x={startX + loopW + 8} y={loopY + 16} fontSize={11} fill={selectedHere ? INDIGO : t.textPrimary} fontWeight={500}>
-                        {msg.label}
-                      </text>
-                    </g>
-                  );
-                }
-
-                const labelX = (fromX + toX) / 2;
-                return (
-                  <g key={msg.id} onMouseDown={(e) => onRowMouseDown(e, msg.id)} style={{ cursor, opacity: groupOpacity }}>
-                    {(selectedHere || isDragging) && (
-                      <rect x={SIDE_PAD - 8} y={y - 22} width={totalW - (SIDE_PAD - 8) * 2} height={ROW_H - 12} rx={10}
-                        fill={INDIGO_SOFT} opacity={isDark ? 0.18 : 0.6} />
-                    )}
-                    <line x1={fromX} y1={y} x2={toX} y2={y} stroke={stroke} strokeWidth={1.5} strokeDasharray={dash} markerEnd="url(#seqArrow)" />
-                    <rect x={labelX - estimateW(msg.label) / 2 - 6} y={y - 18} width={estimateW(msg.label) + 12} height={18} rx={6}
-                      fill={t.canvas} stroke={selectedHere ? INDIGO : t.cardBorder} strokeWidth={selectedHere ? 1.25 : 1} />
-                    <text x={labelX} y={y - 5} textAnchor="middle" fontSize={11} fill={selectedHere ? INDIGO : t.textPrimary} fontWeight={500}>
-                      {msg.label}
-                    </text>
-                  </g>
-                );
-              })}
-
-              {/* Actor headers (rendered last so they overlay lifelines cleanly) */}
-              {actors.map(name => {
-                const x = actorX(name);
-                const w = colW - 24;
-                return (
-                  <g key={`hdr-${name}`}>
-                    <rect x={x - w / 2} y={HEADER_PAD} width={w} height={HEADER_H} rx={12}
-                      fill={t.actorFill} stroke={t.actorStroke} strokeWidth={1.25} filter="url(#seqShadow)" />
-                    {editingId === name ? (
-                      <foreignObject x={x - w / 2 + 8} y={HEADER_PAD + 16} width={w - 16} height={32}>
-                        <input
-                          autoFocus
-                          defaultValue={name}
-                          onBlur={(e) => { renameActor(name, e.currentTarget.value.trim()); setEditingId(null); }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') { renameActor(name, (e.target as HTMLInputElement).value.trim()); setEditingId(null); }
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          style={{
-                            width: '100%', height: '100%', border: 'none', borderRadius: 6,
-                            outline: `2px solid ${INDIGO}`, textAlign: 'center', fontSize: 13,
-                            fontWeight: 600, background: t.inputBg, color: t.inputText,
-                            boxSizing: 'border-box', padding: '0 6px', fontFamily: 'inherit',
-                          }}
-                        />
-                      </foreignObject>
-                    ) : (
-                      <text
-                        x={x} y={HEADER_PAD + HEADER_H / 2 + 4} textAnchor="middle"
-                        fontSize={13} fontWeight={700} fill={t.actorText}
-                        style={{ cursor: 'pointer', userSelect: 'none' }}
-                        onDoubleClick={() => setEditingId(name)}
-                      >
-                        {name}
-                      </text>
-                    )}
-                    <circle
-                      cx={x + w / 2 - 12} cy={HEADER_PAD + 14} r={9}
-                      fill="transparent"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => removeActor(name)}
-                    >
-                      <title>Remove actor</title>
-                    </circle>
-                    <text x={x + w / 2 - 12} y={HEADER_PAD + 18} textAnchor="middle" fontSize={12}
-                      fill={t.textMuted} style={{ pointerEvents: 'none', userSelect: 'none' }}>×</text>
-                  </g>
-                );
-              })}
-            </svg>
-          )}
+          <SequenceCanvas
+            model={model} actors={actors} messages={messages}
+            t={t} isDark={isDark}
+            colW={colW} totalW={totalW} totalH={totalH}
+            actorX={actorX} msgY={msgY}
+            selected={selected} editingId={editingId} setEditingId={setEditingId}
+            drag={drag} onRowMouseDown={onRowMouseDown}
+            renameActor={renameActor} removeActor={removeActor}
+            svgRef={svgRef}
+          />
         </div>
 
         {/* Side panel */}
@@ -599,9 +443,6 @@ export function SequenceEditor({
   );
 }
 
-function estimateW(text: string, pxPerChar = 7): number {
-  return text.length * pxPerChar;
-}
 
 function primaryBtn(): React.CSSProperties {
   return {
