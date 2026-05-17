@@ -1,22 +1,26 @@
 import { useState } from 'react';
-import { DiagramEditor } from 'flowchart-sequence-designer/ui';
+import { DiagramEditor, SequenceEditor, presetSequenceModel } from 'flowchart-sequence-designer/ui';
 import type { DiagramVariant } from 'flowchart-sequence-designer';
 import { DocsPage } from './DocsPage';
 
-const VARIANTS: { key: DiagramVariant; label: string; description: string }[] = [
-  { key: 'flowchart', label: 'Flowchart', description: 'General purpose — any shapes, any flow' },
-  { key: 'question', label: 'Question Flow', description: 'Each node is a question; answers are side-by-side' },
-  { key: 'journey', label: 'Journey Map', description: 'Numbered milestone steps' },
+type VariantKey = DiagramVariant | 'sequence';
+
+const VARIANTS: { key: VariantKey; label: string; description: string }[] = [
+  { key: 'flowchart', label: 'Flowchart',     description: 'General purpose — any shapes, any flow' },
+  { key: 'question',  label: 'Question Flow', description: 'Each node is a question; answers are side-by-side' },
+  { key: 'journey',   label: 'Journey Map',   description: 'Numbered milestone steps' },
+  { key: 'sequence',  label: 'Sequence',      description: 'Actor lifelines + ordered messages' },
 ];
 
 type Theme = 'light' | 'dark' | 'auto';
-type Tab = DiagramVariant | 'docs';
+type Tab = VariantKey | 'docs';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('flowchart');
   const [theme, setTheme] = useState<Theme>('auto');
 
-  const variant = tab === 'docs' ? 'flowchart' : tab;
+  const variant: DiagramVariant =
+    tab === 'docs' || tab === 'sequence' ? 'flowchart' : tab;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -99,10 +103,13 @@ export default function App() {
         </div>
       </div>
 
-      {tab === 'docs'
-        ? <DocsPage />
-        : <DiagramEditor key={variant} variant={variant} theme={theme} height="100%" />
-      }
+      {tab === 'docs' ? (
+        <DocsPage />
+      ) : tab === 'sequence' ? (
+        <SequenceEditor key="sequence" initialModel={presetSequenceModel()} theme={theme} height="100%" />
+      ) : (
+        <DiagramEditor key={variant} variant={variant} theme={theme} height="100%" />
+      )}
     </div>
   );
 }

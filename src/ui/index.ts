@@ -4,3 +4,4 @@ export { SequenceEditor } from './SequenceEditor.js';
 export type { SequenceEditorProps, SequenceThemeColors } from './SequenceEditor.js';
 export { Toolbar } from './Toolbar.js';
 export { StepEditor } from './StepEditor.js';
+export { presetFlowchartModel, presetSequenceModel, emptyModel } from './presets.js';

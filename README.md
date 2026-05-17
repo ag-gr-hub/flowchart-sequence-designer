@@ -2,6 +2,9 @@
 
 A TypeScript-first Bun/npm package for building and editing flowchart and sequence diagrams — both programmatically via a fluent API and visually via a React drag-and-drop canvas editor.
 
+**🔗 [Live demo & developer docs →](https://ag-gr-hub.github.io/flowchart-sequence-designer/)**
+Open it to drive the editor, switch variants (Flowchart / Question / Journey / Sequence), and copy the same API snippets shown below straight from the docs tab. Every variant boots with a working sample diagram so you can poke without any setup.
+
 ## Install
 
 ```bash
@@ -127,6 +130,22 @@ import { DiagramEditor } from 'flowchart-sequence-designer/ui';
 <DiagramEditor />
 ```
 
+Mounted without an `initialModel` the editor boots with a small working
+sample diagram for the chosen `variant` — a 6-node order-flow for
+`flowchart`, a role-picker for `question`, a 5-step onboarding for
+`journey`, and a 3-actor login handshake for the `SequenceEditor`. This
+gives anyone evaluating the package something to interact with from the
+first render. To start blank instead:
+
+```tsx
+import { DiagramEditor, emptyModel } from 'flowchart-sequence-designer/ui';
+
+<DiagramEditor initialModel={emptyModel('flowchart')} />
+```
+
+The presets are also exported in case you want to hydrate them from your
+own code: `presetFlowchartModel(variant?)` and `presetSequenceModel()`.
+
 ### All props
 
 ```tsx
@@ -162,9 +181,12 @@ import { DiagramEditor } from 'flowchart-sequence-designer/ui';
 
 **Canvas**
 - Drag nodes to reposition (snaps to 24px grid)
-- Scroll to zoom in/out
-- Drag the canvas background to pan
+- Scroll to zoom in/out (pinch to zoom on touch)
+- Drag the canvas background to pan (one-finger pan on touch)
 - Double-click a node to rename it inline
+- Dashed alignment guides appear when a dragged node lines up with a sibling's edge or center, and it snaps within 4 px
+- Bottom-right minimap — click or drag to pan the viewport
+- Accessibility: every node, port, and control is keyboard-reachable with a visible focus ring; selection / add / delete actions announce via an `aria-live` status region; the edge-flow animation honours `prefers-reduced-motion`
 
 **Connecting nodes**
 - Hover a node to reveal the bottom port dot, then drag it to another node
@@ -185,6 +207,8 @@ import { DiagramEditor } from 'flowchart-sequence-designer/ui';
 **Context menu** (right-click)
 - On canvas: Add node at cursor, Re-center, Undo, Redo
 - On node: Rename, Duplicate, Disconnect all edges, Delete
+- On edge: Style (solid/dashed/dotted), Arrowhead, Reset routing, Delete
+- On touch devices: long-press the canvas (~550ms) opens the canvas menu
 
 **Keyboard shortcuts**
 
@@ -193,6 +217,16 @@ import { DiagramEditor } from 'flowchart-sequence-designer/ui';
 | `Ctrl+Z` | Undo |
 | `Ctrl+Y` / `Ctrl+Shift+Z` | Redo |
 | `Ctrl+0` | Fit all nodes in view |
+| `Ctrl+C` / `Ctrl+V` | Copy and paste the current selection (internal edges preserved, +24 px offset on paste) |
+| `Ctrl+D` | Duplicate the current selection |
+| `Delete` / `Backspace` | Remove the current selection |
+| `Escape` | Deselect, cancel in-flight edge drag, close context menu |
+| `Arrow` keys | Nudge selection by 1 grid unit (Shift = 4 units) |
+| `Alt+Arrow` | Traverse to the nearest node in that direction from the current selection |
+| `Shift+click` | Toggle a node in/out of the current selection |
+| `Shift+drag` (empty canvas) | Box-select — add every intersected node to the selection |
+| Double-click edge label | Rename the edge label inline |
+| Drag edge midpoint | Route the edge through a waypoint (right-click → Reset routing to clear) |
 
 **Export / Import**
 - Toolbar exports to Mermaid, PlantUML, JSON, SVG, PNG

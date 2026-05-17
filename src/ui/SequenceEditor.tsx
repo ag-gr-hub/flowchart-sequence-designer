@@ -8,6 +8,7 @@ import { toSVG, toPNG } from '../exporters/svg.js';
 import { fromMermaid } from '../importers/mermaid.js';
 import { fromJSON } from '../importers/json.js';
 import { useIsDark } from './hooks/useSystemTheme.js';
+import { presetSequenceModel } from './presets.js';
 
 const INDIGO = '#4f46e5';
 const INDIGO_SOFT = '#eef2ff';
@@ -97,7 +98,7 @@ function ensureSequenceModel(m?: DiagramModel): DiagramModel {
   if (m && m.type === 'sequence') {
     return { ...m, actors: m.actors ?? [], messages: m.messages ?? [] };
   }
-  return { type: 'sequence', nodes: [], edges: [], actors: [], messages: [] };
+  return presetSequenceModel();
 }
 
 export function SequenceEditor({

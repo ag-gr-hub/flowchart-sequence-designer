@@ -19,6 +19,7 @@ import {
 } from './layout.js';
 import { findSiblingSnap, type AlignGuideV, type AlignGuideH } from './alignment.js';
 import { nearestInDirection } from './traversal.js';
+import { presetFlowchartModel } from './presets.js';
 import type { DiagramModel, DiagramNode, DiagramEdge, ExportFormat, DiagramVariant } from '../core/types.js';
 import { toMermaid } from '../exporters/mermaid.js';
 import { toPlantUML } from '../exporters/plantuml.js';
@@ -84,7 +85,7 @@ function FlowchartEditor({
 }: DiagramEditorProps) {
   const base: DiagramModel = initialModel
     ? { ...initialModel, variant: initialModel.variant ?? variant }
-    : { type: 'flowchart', variant, nodes: [], edges: [] };
+    : presetFlowchartModel(variant);
   const notify = useCallback((m: DiagramModel) => onChange?.(m), [onChange]);
   const history = useHistory<DiagramModel>(base, notify);
   const { state: model, apply: applyModel, applyAndPush, undo, redo } = history;

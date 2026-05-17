@@ -89,6 +89,7 @@ const NAV = [
   { id: 'import', label: 'Import' },
   { id: 'export', label: 'Export formats' },
   { id: 'react-ui', label: 'React UI' },
+  { id: 'shortcuts', label: 'Keyboard shortcuts' },
   { id: 'props', label: 'Component props' },
   { id: 'types', label: 'TypeScript types' },
 ];
@@ -371,6 +372,42 @@ diagram.toPNG()       // → Promise<Blob>  (browser only)`}>
           </table>
         </Section>
 
+        {/* ── Shortcuts ── */}
+        <Section id="shortcuts" title="Keyboard shortcuts" badge="UI">
+          <P>Every editor shortcut is keyboard-only — the same actions are also reachable via right-click menus and toolbar buttons.</P>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 12 }}>
+            <thead>
+              <tr style={{ background: '#0d1117' }}>
+                <th style={thStyle}>Shortcut</th>
+                <th style={thStyle}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['Ctrl+Z', 'Undo'],
+                ['Ctrl+Y / Ctrl+Shift+Z', 'Redo'],
+                ['Ctrl+0', 'Fit all nodes in view'],
+                ['Ctrl+C / Ctrl+V', 'Copy / paste selection (internal edges preserved, +24 px offset)'],
+                ['Ctrl+D', 'Duplicate selection'],
+                ['Delete / Backspace', 'Remove selection'],
+                ['Escape', 'Deselect, cancel edge drag, close context menu'],
+                ['Arrow keys', 'Nudge selection 1 grid unit (Shift = 4 units)'],
+                ['Alt+Arrow', 'Traverse to nearest node in that direction'],
+                ['Shift+click', 'Toggle a node in/out of selection'],
+                ['Shift+drag (canvas)', 'Box-select — adds intersected nodes to selection'],
+                ['Double-click edge label', 'Rename edge label inline'],
+                ['Drag edge midpoint', 'Route edge through a waypoint'],
+              ].map(([k, a]) => (
+                <tr key={k}>
+                  <td style={{ ...tdStyle, fontFamily: 'ui-monospace,monospace', color: '#a5b4fc', whiteSpace: 'nowrap' }}>{k}</td>
+                  <td style={tdStyle}>{a}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <P><strong style={{ color: '#cbd5e1' }}>Touch:</strong> one-finger pan, two-finger pinch-zoom, long-press (~550 ms) opens the canvas context menu. Port circles are larger on coarse-pointer devices.</P>
+        </Section>
+
         {/* ── Props ── */}
         <Section id="props" title="Component props">
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -389,6 +426,7 @@ diagram.toPNG()       // → Promise<Blob>  (browser only)`}>
               <PropRow name="height" type="string" def='"600"' desc="Any CSS height value" />
               <PropRow name="variant" type="DiagramVariant" def='"flowchart"' desc='"flowchart" | "question" | "journey"' />
               <PropRow name="theme" type="string" def='"auto"' desc='"light" | "dark" | "auto" (follows system)' />
+              <PropRow name="themeOverrides" type="Partial<ThemeColors>" desc="Brand-match the editor by overriding any palette entries" />
               <PropRow name="allowedExports" type="ExportFormat[]" desc="Restrict visible export buttons" />
               <PropRow name="allowImport" type="boolean" def="true" desc="Show/hide the Import button" />
             </tbody>
@@ -447,6 +485,7 @@ diagram.toPNG()       // → Promise<Blob>  (browser only)`}>
   label?: string;
   style?: 'solid' | 'dashed' | 'dotted';
   arrowhead?: 'arrow' | 'none' | 'open';
+  waypoint?: { x: number; y: number };
 }`}>
             {KW('interface')} {TY('DiagramEdge')} {'{'}{'\n'}
             {'  '}{TY('id')}: {TY('string')};{'\n'}
@@ -454,6 +493,7 @@ diagram.toPNG()       // → Promise<Blob>  (browser only)`}>
             {'  '}{TY('label')}{OP('?')}: {TY('string')};{'\n'}
             {'  '}{TY('style')}{OP('?')}: {STR("'solid'")} {OP('|')} {STR("'dashed'")} {OP('|')} {STR("'dotted'")};{'\n'}
             {'  '}{TY('arrowhead')}{OP('?')}: {STR("'arrow'")} {OP('|')} {STR("'none'")} {OP('|')} {STR("'open'")};{'\n'}
+            {'  '}{TY('waypoint')}{OP('?')}: {'{ '}{TY('x')}: {TY('number')}; {TY('y')}: {TY('number')} {'}'};{'\n'}
             {'}'}
           </Code>
         </Section>

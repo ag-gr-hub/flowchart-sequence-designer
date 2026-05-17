@@ -46,6 +46,15 @@ Versioning: [Semantic Versioning](https://semver.org/).
   bundle size + top input contributors per entry point, and writes
   `dist/.metafile-{core,ui}.json` for a visual treemap on
   esbuild.github.io/analyze. Useful before shipping any bundle-shape change.
+- Built-in sample diagrams. `DiagramEditor` and `SequenceEditor` now fall
+  back to a small working preset when mounted without `initialModel` — a
+  6-node order-flow for the flowchart variant, a 3-answer role picker for
+  question, a 5-step onboarding for journey, and a 3-actor login handshake
+  for sequence. New exports `presetFlowchartModel(variant?)`,
+  `presetSequenceModel()`, and `emptyModel(type, variant?)` (the latter is
+  the opt-out for consumers who explicitly want a blank canvas).
+- Demo (live site) gains a Sequence tab so all four variants are
+  reachable from the same nav, each booting with its preset diagram.
 
 ### Changed
 - Internal refactor: the 1500-line `DiagramEditor.tsx` monolith is split into
