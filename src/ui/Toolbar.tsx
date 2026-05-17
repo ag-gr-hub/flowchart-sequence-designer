@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ImportDialog } from './ImportDialog.js';
+import { darkTheme, ACCENT } from './theme.js';
 import type { ExportFormat } from '../core/types.js';
 
 const ALL_FORMATS: { key: ExportFormat; label: string }[] = [
@@ -28,8 +29,8 @@ export function Toolbar({ onExport, onImport, allowedExports, allowImport = true
       <div style={brand}>
         <div style={brandDot} />
         <span>flowchart</span>
-        <span style={{ color: '#94a3b8', fontWeight: 400 }}>/</span>
-        <span style={{ color: '#4f46e5' }}>designer</span>
+        <span style={{ color: darkTheme.textSecondary, fontWeight: 400 }}>/</span>
+        <span style={{ color: ACCENT.indigo }}>designer</span>
       </div>
 
       <div style={divider} />
@@ -42,7 +43,7 @@ export function Toolbar({ onExport, onImport, allowedExports, allowImport = true
         )}
         {formats.length > 0 && (
           <>
-            <span style={{ fontSize: 11, color: '#cbd5e1', margin: '0 4px' }}>Export →</span>
+            <span style={{ fontSize: 11, color: darkTheme.inputText, margin: '0 4px' }}>Export →</span>
             {formats.map(f => (
               <button key={f.key} onClick={() => onExport(f.key)} style={exportBtn}>
                 {f.label}
@@ -62,14 +63,16 @@ export function Toolbar({ onExport, onImport, allowedExports, allowImport = true
   );
 }
 
+// Toolbar is intentionally always-dark chrome regardless of editor theme — it
+// reads from `darkTheme` directly rather than threading a runtime theme prop.
 const bar: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 10,
   padding: '0 14px',
   height: 44,
-  background: '#1e293b',
-  borderBottom: '1px solid #334155',
+  background: darkTheme.panelBg,
+  borderBottom: `1px solid ${darkTheme.panelBorder}`,
   flexShrink: 0,
 };
 const brand: React.CSSProperties = {
@@ -78,7 +81,7 @@ const brand: React.CSSProperties = {
   gap: 5,
   fontSize: 13,
   fontWeight: 700,
-  color: '#f1f5f9',
+  color: darkTheme.textPrimary,
   letterSpacing: 0.2,
   fontFamily: 'ui-monospace,monospace',
 };
@@ -86,20 +89,20 @@ const brandDot: React.CSSProperties = {
   width: 7,
   height: 7,
   borderRadius: '50%',
-  background: '#4f46e5',
-  boxShadow: '0 0 6px #818cf8',
+  background: ACCENT.indigo,
+  boxShadow: `0 0 6px ${ACCENT.indigoLight}`,
 };
 const divider: React.CSSProperties = {
   width: 1,
   height: 20,
-  background: '#334155',
+  background: darkTheme.panelBorder,
   margin: '0 4px',
 };
 const ghostBtn: React.CSSProperties = {
   padding: '4px 10px',
   background: 'transparent',
-  color: '#94a3b8',
-  border: '1px solid #334155',
+  color: darkTheme.textSecondary,
+  border: `1px solid ${darkTheme.panelBorder}`,
   borderRadius: 6,
   cursor: 'pointer',
   fontSize: 11,
@@ -109,9 +112,9 @@ const ghostBtn: React.CSSProperties = {
 };
 const exportBtn: React.CSSProperties = {
   padding: '4px 10px',
-  background: 'rgba(79,70,229,0.15)',
-  color: '#a5b4fc',
-  border: '1px solid rgba(79,70,229,0.3)',
+  background: ACCENT.indigoSoftBg,
+  color: ACCENT.indigoText,
+  border: `1px solid ${ACCENT.indigoSoftBorder}`,
   borderRadius: 6,
   cursor: 'pointer',
   fontSize: 11,
