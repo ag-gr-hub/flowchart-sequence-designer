@@ -42,6 +42,10 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - Focus-visible outlines on every focusable control inside the editor (buttons,
   inputs, role="button" nodes, the canvas itself) using the active accent
   color, so keyboard users always see where focus lives.
+- `bun run analyze` — esbuild-metafile bundle analyzer that prints minified
+  bundle size + top input contributors per entry point, and writes
+  `dist/.metafile-{core,ui}.json` for a visual treemap on
+  esbuild.github.io/analyze. Useful before shipping any bundle-shape change.
 
 ### Changed
 - Internal refactor: the 1500-line `DiagramEditor.tsx` monolith is split into
