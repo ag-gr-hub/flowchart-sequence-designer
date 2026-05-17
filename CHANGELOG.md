@@ -76,6 +76,16 @@ Versioning: [Semantic Versioning](https://semver.org/).
   width/height ternary. `DiagramEditor.tsx` is now ~990 lines.
 
 ### Fixed
+- Sequence diagram message reorder. The previous drag handler ran
+  `reorderMessage` (which mutates the model + pushes history) on every
+  mouse-move tick, so a single drag could cascade through neighboring rows,
+  swap labels onto the wrong lifeline, and clog the undo stack with hundreds
+  of intermediate states. The new implementation seeds drag state on
+  mousedown, waits for a 5-pixel threshold before activating, renders the
+  dragged row in a virtual "preview" position via `useMemo` without touching
+  `messages`, and commits the reorder exactly once on mouseup. Window-level
+  `mousemove`/`mouseup` listeners replace the SVG-scoped handlers, so
+  releasing outside the canvas still ends the drag cleanly.
 - Node drag operations now push to the undo history. Previously the drag
   mutated state directly and was lost on `Ctrl+Z`.
 - Edge `style: 'dashed'` and `style: 'dotted'` now render with the correct
