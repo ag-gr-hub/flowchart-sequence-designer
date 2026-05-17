@@ -1,10 +1,6 @@
 import { Model } from '../core/model.js';
-import type { DiagramNode, DiagramEdge, NodeShape, SequenceMessage } from '../core/types.js';
-
-let _idCounter = 0;
-const uid = () => `n${++_idCounter}`;
-const eid = (() => { let c = 0; return () => `e${++c}`; })();
-const mid = (() => { let c = 0; return () => `m${++c}`; })();
+import type { NodeShape } from '../core/types.js';
+import { nextId } from '../core/ids.js';
 
 // Detects shape from Mermaid node syntax
 function parseNodeDecl(raw: string): { id: string; label: string; shape: NodeShape } | null {
@@ -100,7 +96,8 @@ function parseFlowchart(lines: string[]): Model {
       const fromId = fromNode?.id ?? fromRaw.replace(/\W.*/, '');
       const toId = toNode?.id ?? toRaw.replace(/\W.*/, '');
       model.addEdge({
-        id: eid(), from: fromId, to: toId,
+        id: nextId('e', model.toJSON().edges),
+        from: fromId, to: toId,
         ...(label ? { label } : {}),
         style,
         ...(arrowhead === 'none' ? { arrowhead } : {}),
@@ -147,7 +144,8 @@ function parseSequence(lines: string[], title?: string): Model {
       const label = msgMatch[4].trim();
       model.addActor(from);
       model.addActor(to);
-      model.addMessage({ id: mid(), from, to, label, style: arrow.startsWith('--') ? 'dashed' : 'solid' });
+      const messages = model.toJSON().messages ?? [];
+      model.addMessage({ id: nextId('m', messages), from, to, label, style: arrow.startsWith('--') ? 'dashed' : 'solid' });
     }
   }
 
