@@ -277,8 +277,7 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
       {editing && !isAmber ? (
         <foreignObject x={mx - labelW / 2} y={my - 12} width={labelW} height={22}>
           <input
-            // @ts-ignore
-            xmlns="http://www.w3.org/1999/xhtml" autoFocus
+            autoFocus
             value={editValue ?? ''}
             onChange={(e) => onEditChange?.(e.target.value)}
             onBlur={() => onEditCommit?.()}
