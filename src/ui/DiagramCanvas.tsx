@@ -151,7 +151,7 @@ export function DiagramCanvas(props: DiagramCanvasProps) {
     acc,
     transform,
     setTransform,
-    selected,
+    selected: _selected,
     selectedSet,
     hoveredId,
     setHoveredId,

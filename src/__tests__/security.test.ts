@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { sanitizeLabel, sanitizeURL, MAX_NODES, MAX_IMPORT_LENGTH } from '../core/sanitize';
+import { sanitizeLabel, sanitizeURL, MAX_IMPORT_LENGTH } from '../core/sanitize';
 import { fromMermaid } from '../importers/mermaid';
 import { fromJSON } from '../importers/json';
 import { toSVG } from '../exporters/svg';
