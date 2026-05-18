@@ -38,8 +38,9 @@ export function sanitizeLabel(raw: string): string {
   // eslint-disable-next-line no-control-regex
   s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   // Strip HTML/XML tags (loop to handle nested constructions)
-  while (/<\/?[a-zA-Z][^>]*>/g.test(s)) {
-    s = s.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+  // Requires letter or / after < to avoid matching plain text like "x < y > z"
+  while (/<[a-zA-Z/][^>]{0,500}>/g.test(s)) {
+    s = s.replace(/<[a-zA-Z/][^>]{0,500}>/g, '');
   }
   // Strip javascript:/data:/vbscript: URIs (loop for incomplete multi-char sanitization)
   while (/\b(?:javascript|data|vbscript)\s*:/gi.test(s)) {
