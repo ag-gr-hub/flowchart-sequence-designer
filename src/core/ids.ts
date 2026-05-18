@@ -38,7 +38,7 @@ export function nextId(prefix: string, existing: Iterable<{ id: string }>): stri
   for (const item of existing) {
     const match = re.exec(item.id);
     if (match) {
-      const n = parseInt(match[1], 10);
+      const n = parseInt(match[1]!, 10);
       if (n > max) max = n;
     }
   }

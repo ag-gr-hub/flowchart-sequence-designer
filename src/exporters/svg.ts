@@ -80,7 +80,7 @@ function computeLayout(model: DiagramModel): Map<string, LayoutBox> {
   for (const id of queue) layers.set(id, 0);
   let head = 0;
   while (head < queue.length) {
-    const cur = queue[head++];
+    const cur = queue[head++]!;
     const layer = layers.get(cur) ?? 0;
     for (const e of model.edges) {
       if (e.from === cur) {
@@ -117,7 +117,25 @@ function computeLayout(model: DiagramModel): Map<string, LayoutBox> {
 }
 
 function escapeXML(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/**
+ * Defence-in-depth sanitizer for SVG output. Strips dangerous patterns
+ * before XML-escaping. Prevents script injection even if escapeXML were
+ * somehow bypassed or if the SVG is consumed by a less-strict parser.
+ */
+function sanitizeForSVG(s: string): string {
+  let clean = s;
+  // Strip HTML/XML tags
+  clean = clean.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+  // Strip javascript:/data:/vbscript: URIs
+  clean = clean.replace(/\b(?:javascript|data|vbscript)\s*:/gi, '');
+  // Strip on* event handlers
+  clean = clean.replace(/\bon[a-z]+\s*=/gi, '');
+  // Strip null bytes
+  clean = clean.replace(/\x00/g, '');
+  return escapeXML(clean);
 }
 
 // Match canvas: indigo/slate palette, light theme by default.
@@ -139,7 +157,7 @@ function renderStandardNode(node: DiagramNode, box: LayoutBox): string {
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
   const shape = node.shape ?? 'rectangle';
-  const label = `<text x="${cx}" y="${cy + 4.5}" text-anchor="middle" font-family="ui-sans-serif,system-ui,-apple-system,sans-serif" font-size="13" font-weight="500" fill="${COLORS.text}">${escapeXML(node.label)}</text>`;
+  const label = `<text x="${cx}" y="${cy + 4.5}" text-anchor="middle" font-family="ui-sans-serif,system-ui,-apple-system,sans-serif" font-size="13" font-weight="500" fill="${COLORS.text}">${sanitizeForSVG(node.label)}</text>`;
 
   let shapeEl = '';
   if (shape === 'diamond') {
@@ -179,7 +197,7 @@ function renderQuestionNode(node: DiagramNode, box: LayoutBox): string {
 
   // QUESTION label + node label
   parts.push(`<text x="${x + 50}" y="${y + 27}" font-family="ui-sans-serif,system-ui,sans-serif" font-size="9" font-weight="700" fill="${COLORS.textSub}" letter-spacing="0.6">QUESTION</text>`);
-  parts.push(`<text x="${x + 50}" y="${y + 42}" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700" fill="${COLORS.text}">${escapeXML(node.label)}</text>`);
+  parts.push(`<text x="${x + 50}" y="${y + 42}" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700" fill="${COLORS.text}">${sanitizeForSVG(node.label)}</text>`);
 
   // Divider
   parts.push(`<line x1="${x}" y1="${y + Q_BASE_H}" x2="${x + w}" y2="${y + Q_BASE_H}" stroke="${COLORS.amberLine}" stroke-width="1"/>`);
@@ -195,14 +213,14 @@ function renderQuestionNode(node: DiagramNode, box: LayoutBox): string {
       const cardY = y + Q_BASE_H + 7;
       const cardH = Q_ANS_ROW_H - 20;
       const cx = cardX + cW / 2;
-      const letter = i < 26 ? letters[i] : `${i + 1}`;
+      const letter = i < 26 ? letters[i]! : `${i + 1}`;
       const maxChars = Math.max(2, Math.floor((cW - 20) / 7.5));
       const displayAns = ans.length > maxChars ? ans.slice(0, maxChars - 1) + '…' : ans;
 
       parts.push(`<rect x="${cardX}" y="${cardY}" width="${cW}" height="${cardH}" rx="8" fill="${COLORS.amberCardBg}" stroke="${COLORS.amberLine}" stroke-width="1"/>`);
       parts.push(`<rect x="${cx - 11}" y="${cardY + 7}" width="22" height="22" rx="6" fill="#fef3c7"/>`);
-      parts.push(`<text x="${cx}" y="${cardY + 22}" text-anchor="middle" font-size="10" font-weight="800" fill="${COLORS.amber}">${escapeXML(letter)}</text>`);
-      parts.push(`<text x="${cx}" y="${cardY + 46}" text-anchor="middle" font-size="11" font-weight="500" fill="#374151" font-family="ui-sans-serif,system-ui,sans-serif">${escapeXML(displayAns)}</text>`);
+      parts.push(`<text x="${cx}" y="${cardY + 22}" text-anchor="middle" font-size="10" font-weight="800" fill="${COLORS.amber}">${sanitizeForSVG(letter)}</text>`);
+      parts.push(`<text x="${cx}" y="${cardY + 46}" text-anchor="middle" font-size="11" font-weight="500" fill="#374151" font-family="ui-sans-serif,system-ui,sans-serif">${sanitizeForSVG(displayAns)}</text>`);
     });
   }
 
@@ -222,7 +240,7 @@ function renderEdge(edge: DiagramEdge, boxes: Map<string, LayoutBox>, variant: D
     const idx = answers.indexOf(edge.label ?? '');
     if (idx >= 0) {
       const prevW = answers.slice(0, idx).reduce((s, a) => s + answerCardW(a) + Q_CARD_PAD, 0);
-      const cW = answerCardW(answers[idx]);
+      const cW = answerCardW(answers[idx]!);
       x1 = fromBox.x + Q_CARD_PAD + prevW + cW / 2;
       y1 = fromBox.y + Q_BASE_H + Q_ANS_ROW_H - 8;
     } else {
@@ -248,7 +266,7 @@ function renderEdge(edge: DiagramEdge, boxes: Map<string, LayoutBox>, variant: D
     const midY = (y1 + y2) / 2;
     const labelW = estimateTextW(edge.label, 7) + 14;
     out += `<rect x="${midX - labelW / 2}" y="${midY - 11}" width="${labelW}" height="18" rx="9" fill="${COLORS.bg}" stroke="${COLORS.nodeStroke}" stroke-width="1"/>`;
-    out += `<text x="${midX}" y="${midY + 2}" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="${COLORS.text}">${escapeXML(edge.label)}</text>`;
+    out += `<text x="${midX}" y="${midY + 2}" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="${COLORS.text}">${sanitizeForSVG(edge.label)}</text>`;
   }
   return out;
 }
@@ -290,7 +308,7 @@ export function toSVG(model: DiagramModel): string {
   ].join('');
 
   const titleEl = model.title
-    ? `<text x="${width / 2}" y="22" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" font-weight="700" fill="${COLORS.text}">${escapeXML(model.title)}</text>`
+    ? `<text x="${width / 2}" y="22" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" font-weight="700" fill="${COLORS.text}">${sanitizeForSVG(model.title)}</text>`
     : '';
 
   const edges = model.edges.map(e => renderEdge(e, boxes, model.variant, model.nodes)).join('\n');

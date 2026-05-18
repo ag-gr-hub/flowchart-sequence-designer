@@ -223,7 +223,7 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
     const idx = answers.indexOf(edge.label ?? '');
     if (idx >= 0) {
       const prevW = answers.slice(0, idx).reduce((s, a) => s + answerCardW(a) + Q_CARD_PAD, 0);
-      const cW = answerCardW(answers[idx]);
+      const cW = answerCardW(answers[idx]!);
       x1 = (from.x ?? 0) + Q_CARD_PAD + prevW + cW / 2;
       y1 = (from.y ?? 0) + Q_BASE_H + Q_ANS_ROW_H - 8;
       exitDir = 'bottom';

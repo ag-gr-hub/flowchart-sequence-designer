@@ -78,7 +78,7 @@ export function SequenceCanvas(props: SequenceCanvasProps) {
     if (idx < 0) return messages;
     const next = messages.slice();
     const [moved] = next.splice(idx, 1);
-    next.splice(drag.targetIdx, 0, moved);
+    next.splice(drag.targetIdx, 0, moved!);
     return next;
   }, [messages, drag]);
 
