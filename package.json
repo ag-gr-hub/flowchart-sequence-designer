@@ -1,6 +1,6 @@
 {
   "name": "flowchart-sequence-designer",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "TypeScript library for building and editing flowcharts and sequence diagrams — programmatic API, React UI, and multi-format export (Mermaid, PlantUML, SVG, PNG, JSON).",
   "license": "MIT",
   "author": "ag-gr-hub",
