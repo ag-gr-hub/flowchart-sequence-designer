@@ -61,7 +61,8 @@ export class Model {
   updateNode(id: string, patch: Partial<Omit<DiagramNode, 'id'>>): this {
     const node = this.data.nodes.find(n => n.id === id);
     if (!node) throw new Error(`Node "${id}" not found`);
-    Object.assign(node, patch);
+    const { __proto__, constructor, ...safe } = patch as Record<string, unknown>;
+    Object.assign(node, safe);
     return this;
   }
 

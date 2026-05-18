@@ -4,3 +4,15 @@ dist/
 *.cjs.map
 .DS_Store
 package-lock.json
+
+# Secrets & credentials
+.env
+.env.*
+.env.local
+.npmrc
+
+# Build artifacts & logs
+coverage/
+*.log
+*.tgz
+.turbo/
