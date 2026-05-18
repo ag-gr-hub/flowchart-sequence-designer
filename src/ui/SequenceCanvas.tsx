@@ -64,7 +64,7 @@ function estimateW(text: string, pxPerChar = 7): number {
  */
 export function SequenceCanvas(props: SequenceCanvasProps) {
   const {
-    model,
+    model: _model,
     actors,
     messages,
     t,

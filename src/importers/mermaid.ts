@@ -29,7 +29,7 @@ function parseNodeDecl(raw: string): { id: string; label: string; shape: NodeSha
 
 // Mermaid flowchart edge connector: solid (-->, ---), dashed (-.->, -.-), or with labels.
 // Uses atomic-style negated chars in first group to prevent polynomial backtracking.
-const EDGE_RE = /^([^\s\-][^\s]*?)\s*(-\.->|-\.-|-->|---)(?:\|([^|]+)\|)?\s*(.+)$/;
+const EDGE_RE = /^([^\s-][^\s]*?)\s*(-\.->|-\.-|-->|---)(?:\|([^|]+)\|)?\s*(.+)$/;
 
 function detectStyle(connector: string): 'solid' | 'dashed' {
   return connector.startsWith('-.') ? 'dashed' : 'solid';
