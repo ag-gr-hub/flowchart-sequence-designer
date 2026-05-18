@@ -198,14 +198,14 @@ export function SequenceEditor({
   const undo = useCallback(() => {
     if (historyIdxRef.current <= 0) return;
     historyIdxRef.current--;
-    const m = historyRef.current[historyIdxRef.current];
+    const m = historyRef.current[historyIdxRef.current]!;
     setModel(m); onChange?.(m);
   }, [onChange]);
 
   const redo = useCallback(() => {
     if (historyIdxRef.current >= historyRef.current.length - 1) return;
     historyIdxRef.current++;
-    const m = historyRef.current[historyIdxRef.current];
+    const m = historyRef.current[historyIdxRef.current]!;
     setModel(m); onChange?.(m);
   }, [onChange]);
 
@@ -247,11 +247,11 @@ export function SequenceEditor({
       });
       return;
     }
-    const from = actors[0];
+    const from = actors[0]!;
     const to = actors[Math.min(1, actors.length - 1)] ?? from;
     applyAndPush({
       ...model,
-      messages: [...messages, { id: nextId('m', messages), from, to, label: 'message', style: 'solid' }],
+      messages: [...messages, { id: nextId('m', messages), from, to, label: 'message', style: 'solid' as const }],
     });
   };
 
@@ -272,7 +272,7 @@ export function SequenceEditor({
     if (fromIdx < 0 || toIdx === fromIdx) return;
     const next = messages.slice();
     const [moved] = next.splice(fromIdx, 1);
-    next.splice(toIdx, 0, moved);
+    next.splice(toIdx, 0, moved!);
     applyAndPush({ ...model, messages: next });
   }, [messages, model, applyAndPush]);
 

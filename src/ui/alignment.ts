@@ -93,7 +93,7 @@ export function findSiblingSnap(
   if (bestX) {
     const bx = bestX as { delta: number; pos: number; otherIdx: number };
     x = dragged.x + bx.delta;
-    const o = others[bx.otherIdx];
+    const o = others[bx.otherIdx]!;
     guideX = {
       pos: bx.pos,
       minY: Math.min(y, o.y) - 12,
@@ -103,7 +103,7 @@ export function findSiblingSnap(
   if (bestY) {
     const by = bestY as { delta: number; pos: number; otherIdx: number };
     y = dragged.y + by.delta;
-    const o = others[by.otherIdx];
+    const o = others[by.otherIdx]!;
     guideY = {
       pos: by.pos,
       minX: Math.min(x, o.x) - 12,

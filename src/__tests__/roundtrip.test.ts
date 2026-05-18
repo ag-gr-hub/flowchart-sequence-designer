@@ -24,8 +24,8 @@ describe('Round-trip: flowchart → JSON → model', () => {
   it('is lossless', () => {
     const fc = flowchart('Test').node('x', 'X', { shape: 'diamond' }).node('y', 'Y').edge('x', 'y', { label: 'ok' });
     const model = fromJSON(fc.toJSON()).toJSON();
-    expect(model.nodes[0].shape).toBe('diamond');
-    expect(model.edges[0].label).toBe('ok');
+    expect(model.nodes[0]!.shape).toBe('diamond');
+    expect(model.edges[0]!.label).toBe('ok');
     expect(model.title).toBe('Test');
   });
 });
@@ -45,13 +45,13 @@ describe('Round-trip: sequence → Mermaid → model', () => {
     expect(model.type).toBe('sequence');
     expect(model.actors).toContain('U');
     expect(model.messages).toHaveLength(1);
-    expect(model.messages![0].label).toBe('ping');
+    expect(model.messages![0]!.label).toBe('ping');
   });
 
   it('preserves dashed message style', () => {
     const seq = sequence('S').actor('A').actor('B').message('A', 'B', 'reply', { style: 'dashed' });
     const model = fromMermaid(seq.toMermaid()).toJSON();
-    expect(model.messages![0].style).toBe('dashed');
+    expect(model.messages![0]!.style).toBe('dashed');
   });
 });
 
@@ -64,7 +64,7 @@ describe('Edge style serialization', () => {
   it('Mermaid roundtrip preserves dashed style', () => {
     const fc = flowchart('S').node('a', 'A').node('b', 'B').edge('a', 'b', { style: 'dashed' });
     const model = fromMermaid(fc.toMermaid()).toJSON();
-    expect(model.edges[0].style).toBe('dashed');
+    expect(model.edges[0]!.style).toBe('dashed');
   });
 
   it('Mermaid collapses dotted to dashed (no native dotted syntax)', () => {
@@ -136,7 +136,7 @@ describe('Mermaid importer hardening', () => {
 
   it('parses dashed edges with arrow', () => {
     const m = fromMermaid('graph TD\n  A-.->B').toJSON();
-    expect(m.edges[0].style).toBe('dashed');
+    expect(m.edges[0]!.style).toBe('dashed');
   });
 });
 
@@ -159,7 +159,7 @@ describe('Model validation', () => {
     });
     const errs = m.validate();
     expect(errs).toHaveLength(1);
-    expect(errs[0].kind).toBe('dangling-to');
+    expect(errs[0]!.kind).toBe('dangling-to');
   });
 
   it('validate() detects duplicate node ids', () => {

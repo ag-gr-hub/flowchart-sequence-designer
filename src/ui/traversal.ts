@@ -37,5 +37,5 @@ export function nearestInDirection(
       Math.hypot(a.x - fromX, a.y - fromY) -
       Math.hypot(b.x - fromX, b.y - fromY),
   );
-  return matches[0].id;
+  return matches[0]!.id;
 }

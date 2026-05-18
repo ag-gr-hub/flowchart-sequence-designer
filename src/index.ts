@@ -23,6 +23,9 @@ export { toSVG, toPNG } from './exporters/svg.js';
 export { fromMermaid } from './importers/mermaid.js';
 export { fromJSON } from './importers/json.js';
 
+// Security utilities
+export { sanitizeLabel, sanitizeURL } from './core/sanitize.js';
+
 // Types
 export type {
   DiagramType,

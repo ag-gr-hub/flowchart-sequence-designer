@@ -53,7 +53,7 @@ export function useHistory<T>(initial: T, onChange?: (next: T) => void): History
   const undo = useCallback(() => {
     if (idxRef.current <= 0) return;
     idxRef.current--;
-    const next = stackRef.current[idxRef.current];
+    const next = stackRef.current[idxRef.current]!;
     setState(next);
     onChange?.(next);
     bump();
@@ -62,7 +62,7 @@ export function useHistory<T>(initial: T, onChange?: (next: T) => void): History
   const redo = useCallback(() => {
     if (idxRef.current >= stackRef.current.length - 1) return;
     idxRef.current++;
-    const next = stackRef.current[idxRef.current];
+    const next = stackRef.current[idxRef.current]!;
     setState(next);
     onChange?.(next);
     bump();

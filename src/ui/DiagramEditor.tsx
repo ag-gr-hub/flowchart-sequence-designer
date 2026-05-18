@@ -146,7 +146,7 @@ function FlowchartEditor({
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-        const last = next.size ? Array.from(next)[next.size - 1] : null;
+        const last = next.size ? Array.from(next)[next.size - 1] ?? null : null;
         setSelected(last);
       } else {
         next.add(id);
@@ -296,7 +296,7 @@ function FlowchartEditor({
         const m = { ...model, nodes: [...model.nodes, ...newNodes], edges: [...model.edges, ...newEdges] };
         applyAndPush(m);
         const newIds = newNodes.map(n => n.id);
-        setSelected(newIds[newIds.length - 1]);
+        setSelected(newIds[newIds.length - 1] ?? null);
         setSelectedSet(new Set(newIds));
         setAnnouncement(`Pasted ${newIds.length} ${variantLabel.toLowerCase()}${newIds.length === 1 ? '' : 's'}.`);
         return true;
@@ -554,7 +554,7 @@ function FlowchartEditor({
         }
         const arr = Array.from(hits);
         setSelectedSet(hits);
-        setSelected(arr.length ? arr[arr.length - 1] : null);
+        setSelected(arr.length ? arr[arr.length - 1] ?? null : null);
       }
       setBoxSel(null);
     }
@@ -599,7 +599,7 @@ function FlowchartEditor({
     if (selectedSet.has(nodeId)) {
       const next = new Set(selectedSet); next.delete(nodeId);
       setSelectedSet(next);
-      if (selected === nodeId) setSelected(next.size ? Array.from(next)[next.size - 1] : null);
+      if (selected === nodeId) setSelected(next.size ? Array.from(next)[next.size - 1] ?? null : null);
     }
     if (node) setAnnouncement(`Deleted ${variantLabel.toLowerCase()} "${node.label}".`);
   };

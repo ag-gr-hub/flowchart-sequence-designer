@@ -64,7 +64,7 @@ export function useCanvasTouch(
       if (e.touches.length === 2) {
         e.preventDefault();
         cancelLongPress();
-        const [a, b] = [e.touches[0], e.touches[1]];
+        const [a, b] = [e.touches[0]!, e.touches[1]!];
         const rect = el.getBoundingClientRect();
         pinch = {
           dist: dist(a, b),
@@ -79,7 +79,7 @@ export function useCanvasTouch(
       }
       if (e.touches.length === 1) {
         const target = e.target as SVGElement | null;
-        const t0 = e.touches[0];
+        const t0 = e.touches[0]!;
         longPressFired = false;
         longPressStart = { x: t0.clientX, y: t0.clientY };
         longPressTimer = setTimeout(() => {
@@ -96,7 +96,7 @@ export function useCanvasTouch(
     const onMove = (e: TouchEvent) => {
       if (pinch && e.touches.length === 2) {
         e.preventDefault();
-        const [a, b] = [e.touches[0], e.touches[1]];
+        const [a, b] = [e.touches[0]!, e.touches[1]!];
         const ratio = dist(a, b) / pinch.dist;
         const scale = Math.min(maxScale, Math.max(minScale, pinch.scale * ratio));
         setTransform({
@@ -107,7 +107,7 @@ export function useCanvasTouch(
         return;
       }
       if (e.touches.length === 1) {
-        const t0 = e.touches[0];
+        const t0 = e.touches[0]!;
         if (
           longPressStart &&
           (Math.abs(t0.clientX - longPressStart.x) > longPressSlop ||

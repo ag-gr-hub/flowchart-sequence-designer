@@ -110,7 +110,7 @@ export function StepEditor({ nodeId, model, onModelChange, variant = 'flowchart'
     const next = idx + dir;
     if (next < 0 || next >= answers.length) return;
     const arr = [...answers];
-    [arr[idx], arr[next]] = [arr[next], arr[idx]];
+    [arr[idx], arr[next]] = [arr[next]!, arr[idx]!];
     onModelChange({ ...model, nodes: model.nodes.map(n => n.id === nodeId ? { ...n, metadata: { ...(n.metadata ?? {}), answers: arr } } : n) });
   };
 
