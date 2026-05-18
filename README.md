@@ -1,5 +1,9 @@
 # flowchart-sequence-designer
 
+[![npm version](https://img.shields.io/npm/v/flowchart-sequence-designer)](https://www.npmjs.com/package/flowchart-sequence-designer)
+[![CI](https://github.com/ag-gr-hub/flowchart-sequence-designer/actions/workflows/test.yml/badge.svg)](https://github.com/ag-gr-hub/flowchart-sequence-designer/actions/workflows/test.yml)
+[![CodeQL](https://github.com/ag-gr-hub/flowchart-sequence-designer/actions/workflows/codeql.yml/badge.svg)](https://github.com/ag-gr-hub/flowchart-sequence-designer/actions/workflows/codeql.yml)
+
 A TypeScript-first Bun/npm package for building and editing flowchart and sequence diagrams — both programmatically via a fluent API and visually via a React drag-and-drop canvas editor.
 
 **🔗 [Live demo & developer docs →](https://ag-gr-hub.github.io/flowchart-sequence-designer/)**
@@ -520,10 +524,35 @@ The `"."` export gives you the core API; `"./ui"` gives you the React components
 
 ---
 
+## Security
+
+This package takes security seriously:
+
+- **Input sanitization** — All user-provided text is sanitized before rendering
+  (HTML tags, `javascript:`/`data:`/`vbscript:` URIs, `on*` event handlers, and
+  control characters are stripped). See `src/core/sanitize.ts`.
+- **Resource limits** — Importers enforce hard caps (500 nodes, 2000 edges, 100
+  actors, 2000 messages, 2MB input) to prevent resource exhaustion.
+- **Prototype pollution defense** — JSON importer strips `__proto__`,
+  `constructor`, and `prototype` keys recursively.
+- **SVG export** — Defence-in-depth: sanitize first, then XML-escape. Safe even
+  if consumed by less-strict parsers.
+- **No `eval` / `innerHTML`** — The codebase never uses dynamic code execution
+  or raw HTML injection.
+- **CodeQL** — Automated security scanning runs weekly and on every PR.
+- **Dependabot** — Dependency updates monitored weekly.
+
+To report a vulnerability, see [SECURITY.md](./SECURITY.md).
+
+---
+
 ## Building from source
 
 ```bash
 bun install
-bun run build    # outputs to dist/
-bun test         # runs the test suite
+bun run build        # outputs to dist/
+bun test             # 105 tests
+bun run typecheck    # tsc --noEmit
+bun run lint         # eslint
+bun run format:check # prettier --check
 ```
