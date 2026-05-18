@@ -14,11 +14,11 @@ import {
 function parseNodeDecl(raw: string): { id: string; label: string; shape: NodeShape } | null {
   // diamond: id{label}, circle: id((label)), parallelogram: id[/label/], default: id[label] or id("label")
   const patterns: [RegExp, NodeShape][] = [
-    [/^(\w+)\{\{?"?(.+?)"?\}?\}$/, 'diamond'],
-    [/^(\w+)\(\("?(.+?)"?\)\)$/, 'circle'],
-    [/^(\w+)\[\/(.+?)\/\]$/, 'parallelogram'],
-    [/^(\w+)\[["']?(.+?)["']?\]$/, 'rectangle'],
-    [/^(\w+)\("?(.+?)"?\)$/, 'rectangle'],
+    [/^(\w+)\{\{?"?([^}"]+)"?\}?\}$/, 'diamond'],
+    [/^(\w+)\(\("?([^)"]+)"?\)\)$/, 'circle'],
+    [/^(\w+)\[\/([^/\]]+)\/\]$/, 'parallelogram'],
+    [/^(\w+)\[["']?([^\]"']+)["']?\]$/, 'rectangle'],
+    [/^(\w+)\("?([^)"]+)"?\)$/, 'rectangle'],
   ];
   for (const [re, shape] of patterns) {
     const m = raw.match(re);
@@ -28,8 +28,8 @@ function parseNodeDecl(raw: string): { id: string; label: string; shape: NodeSha
 }
 
 // Mermaid flowchart edge connector: solid (-->, ---), dashed (-.->, -.-), or with labels.
-// Anchored so node IDs ending in `{`/`[`/`(` cannot bleed into the connector.
-const EDGE_RE = /^(.+?)\s*(-\.->|-\.-|-->|---)(?:\|(.+?)\|)?\s*(.+)$/;
+// Uses atomic-style negated chars in first group to prevent polynomial backtracking.
+const EDGE_RE = /^([^\s\-][^\s]*?)\s*(-\.->|-\.-|-->|---)(?:\|([^|]+)\|)?\s*(.+)$/;
 
 function detectStyle(connector: string): 'solid' | 'dashed' {
   return connector.startsWith('-.') ? 'dashed' : 'solid';
@@ -178,7 +178,8 @@ function parseSequence(lines: string[], title?: string): Model {
     }
 
     // Sequence message arrows: ->, ->>, -->, -->>  (-- prefix = dashed)
-    const msgMatch = trimmed.match(/^(.+?)\s*(-->>|->>|-->|->)\s*(.+?):\s*(.+)$/);
+    // Uses negated char classes to prevent polynomial backtracking.
+    const msgMatch = trimmed.match(/^(\w+)\s*(-->>|->>|-->|->)\s*(\w+):\s*(.+)$/);
     if (msgMatch) {
       const from = safeAddActor(msgMatch[1]!.trim());
       const arrow = msgMatch[2]!;
@@ -224,8 +225,8 @@ export function fromMermaid(mermaid: string): Model {
     throw new Error(`Import aborted: input exceeds the maximum of ${MAX_IMPORT_LENGTH} characters`);
   }
   // Strip mermaid.initialize(...) and similar JS-style config blocks that
-  // sometimes appear in copy-pasted snippets — anything between `init` and `)`.
-  const cleaned = mermaid.replace(/mermaid\.initialize\([\s\S]*?\)\s*;?/g, '');
+  // sometimes appear in copy-pasted snippets. Uses [^)]* to avoid backtracking.
+  const cleaned = mermaid.replace(/mermaid\.initialize\([^)]*\)\s*;?/g, '');
   const rawLines = cleaned.split('\n');
 
   // Strip frontmatter
