@@ -37,12 +37,18 @@ export function sanitizeLabel(raw: string): string {
   // Remove null bytes and ASCII control chars (except \n, \r, \t)
   // eslint-disable-next-line no-control-regex
   s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-  // Strip HTML/XML tags
-  s = s.replace(/<\/?[a-zA-Z][^>]*>/g, '');
-  // Strip javascript:/data:/vbscript: URIs (case-insensitive, whitespace-tolerant)
-  s = s.replace(/\b(?:javascript|data|vbscript)\s*:/gi, '');
-  // Strip on* event handlers (e.g. onerror=, onclick=)
-  s = s.replace(/\bon[a-z]+\s*=/gi, '');
+  // Strip HTML/XML tags (loop to handle nested constructions)
+  while (/<\/?[a-zA-Z][^>]*>/g.test(s)) {
+    s = s.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+  }
+  // Strip javascript:/data:/vbscript: URIs (loop for incomplete multi-char sanitization)
+  while (/\b(?:javascript|data|vbscript)\s*:/gi.test(s)) {
+    s = s.replace(/\b(?:javascript|data|vbscript)\s*:/gi, '');
+  }
+  // Strip on* event handlers (loop for incomplete multi-char sanitization)
+  while (/\bon[a-z]+\s*=/gi.test(s)) {
+    s = s.replace(/\bon[a-z]+\s*=/gi, '');
+  }
   // Enforce length limit
   if (s.length > MAX_LABEL_LENGTH) {
     s = s.slice(0, MAX_LABEL_LENGTH);

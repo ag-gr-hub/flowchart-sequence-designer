@@ -143,12 +143,18 @@ function escapeXML(s: string): string {
  */
 function sanitizeForSVG(s: string): string {
   let clean = s;
-  // Strip HTML/XML tags
-  clean = clean.replace(/<\/?[a-zA-Z][^>]*>/g, '');
-  // Strip javascript:/data:/vbscript: URIs
-  clean = clean.replace(/\b(?:javascript|data|vbscript)\s*:/gi, '');
-  // Strip on* event handlers
-  clean = clean.replace(/\bon[a-z]+\s*=/gi, '');
+  // Strip HTML/XML tags (loop to handle nested constructions)
+  while (/<\/?[a-zA-Z][^>]*>/g.test(clean)) {
+    clean = clean.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+  }
+  // Strip javascript:/data:/vbscript: URIs (loop for incomplete multi-char sanitization)
+  while (/\b(?:javascript|data|vbscript)\s*:/gi.test(clean)) {
+    clean = clean.replace(/\b(?:javascript|data|vbscript)\s*:/gi, '');
+  }
+  // Strip on* event handlers (loop for incomplete multi-char sanitization)
+  while (/\bon[a-z]+\s*=/gi.test(clean)) {
+    clean = clean.replace(/\bon[a-z]+\s*=/gi, '');
+  }
   // Strip null bytes
   // eslint-disable-next-line no-control-regex
   clean = clean.replace(/\x00/g, '');
