@@ -69,7 +69,7 @@
     }
   },
   "devDependencies": {
-    "@types/react": "^18",
+    "@types/react": "^19",
     "@types/react-dom": "^18",
     "bun-types": "latest",
     "react": "^18",
