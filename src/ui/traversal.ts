@@ -33,9 +33,7 @@ export function nearestInDirection(
   });
   if (matches.length === 0) return null;
   matches.sort(
-    (a, b) =>
-      Math.hypot(a.x - fromX, a.y - fromY) -
-      Math.hypot(b.x - fromX, b.y - fromY),
+    (a, b) => Math.hypot(a.x - fromX, a.y - fromY) - Math.hypot(b.x - fromX, b.y - fromY),
   );
   return matches[0]!.id;
 }

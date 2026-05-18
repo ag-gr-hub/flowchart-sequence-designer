@@ -25,7 +25,7 @@ describe('nextId', () => {
   test('no collision with preset IDs (the original bug)', () => {
     const preset = [{ id: 'm1' }, { id: 'm2' }, { id: 'm3' }, { id: 'm4' }];
     const first = nextId('m', preset);
-    expect(preset.find(p => p.id === first)).toBeUndefined();
+    expect(preset.find((p) => p.id === first)).toBeUndefined();
   });
 });
 
@@ -41,6 +41,6 @@ describe('makeIdSource', () => {
     const existing = [{ id: 'e1' }, { id: 'e2' }];
     const gen = makeIdSource('e', existing);
     const minted = Array.from({ length: 5 }, () => gen());
-    expect(new Set([...existing.map(e => e.id), ...minted]).size).toBe(7);
+    expect(new Set([...existing.map((e) => e.id), ...minted]).size).toBe(7);
   });
 });

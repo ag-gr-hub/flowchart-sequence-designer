@@ -36,11 +36,22 @@ export class SequenceBuilder {
    * Append a message. Both endpoints are auto-registered as actors if not
    * already present. The id is derived from the current message list.
    */
-  message(from: string, to: string, label: string, options: Partial<Pick<SequenceMessage, 'style'>> = {}): this {
+  message(
+    from: string,
+    to: string,
+    label: string,
+    options: Partial<Pick<SequenceMessage, 'style'>> = {},
+  ): this {
     this.model.addActor(from);
     this.model.addActor(to);
     const messages = this.model.toJSON().messages ?? [];
-    this.model.addMessage({ id: nextId('m', messages), from, to, label, style: options.style ?? 'solid' });
+    this.model.addMessage({
+      id: nextId('m', messages),
+      from,
+      to,
+      label,
+      style: options.style ?? 'solid',
+    });
     return this;
   }
 

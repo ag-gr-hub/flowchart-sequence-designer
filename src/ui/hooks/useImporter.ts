@@ -32,19 +32,22 @@ export function useImporter(
 ): (text: string) => void {
   const { expectedType, transform, onSuccess, onError } = options;
   const reportError = onError ?? ((msg: string) => alert(msg));
-  return useCallback((text: string) => {
-    try {
-      const parsed = text.trim().startsWith('{')
-        ? fromJSON(text).toJSON()
-        : fromMermaid(text).toJSON();
-      if (expectedType && parsed.type !== expectedType) {
-        reportError(`Imported diagram is not a ${expectedType} diagram.`);
-        return;
+  return useCallback(
+    (text: string) => {
+      try {
+        const parsed = text.trim().startsWith('{')
+          ? fromJSON(text).toJSON()
+          : fromMermaid(text).toJSON();
+        if (expectedType && parsed.type !== expectedType) {
+          reportError(`Imported diagram is not a ${expectedType} diagram.`);
+          return;
+        }
+        applyAndPush(transform ? transform(parsed) : parsed);
+        onSuccess?.('Diagram imported successfully');
+      } catch (err) {
+        reportError(`Import failed: ${(err as Error).message}`);
       }
-      applyAndPush(transform ? transform(parsed) : parsed);
-      onSuccess?.('Diagram imported successfully');
-    } catch (err) {
-      reportError(`Import failed: ${(err as Error).message}`);
-    }
-  }, [applyAndPush, expectedType, transform, onSuccess, onError]);
+    },
+    [applyAndPush, expectedType, transform, onSuccess, onError],
+  );
 }

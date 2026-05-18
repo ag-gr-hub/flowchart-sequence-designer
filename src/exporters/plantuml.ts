@@ -2,10 +2,14 @@ import type { DiagramModel, DiagramNode, DiagramEdge, SequenceMessage } from '..
 
 function nodeShape(node: DiagramNode): [string, string] {
   switch (node.shape) {
-    case 'diamond': return ['<>', '<>'];
-    case 'circle': return ['(', ')'];
-    case 'parallelogram': return ['/', '/'];
-    default: return ['[', ']'];
+    case 'diamond':
+      return ['<>', '<>'];
+    case 'circle':
+      return ['(', ')'];
+    case 'parallelogram':
+      return ['/', '/'];
+    default:
+      return ['[', ']'];
   }
 }
 
@@ -21,9 +25,8 @@ function exportFlowchart(model: DiagramModel): string {
   lines.push('');
 
   for (const edge of model.edges) {
-    const arrow = edge.style === 'dashed' ? '-[dashed]->'
-      : edge.style === 'dotted' ? '-[dotted]->'
-      : '-->';
+    const arrow =
+      edge.style === 'dashed' ? '-[dashed]->' : edge.style === 'dotted' ? '-[dotted]->' : '-->';
     const label = edge.label ? ` : ${edge.label}` : '';
     lines.push(`${edge.from} ${arrow} ${edge.to}${label}`);
   }
@@ -41,12 +44,12 @@ function exportSequence(model: DiagramModel): string {
   if (model.title) lines.push(`title ${model.title}`);
   lines.push('');
 
-  for (const actor of (model.actors ?? [])) {
+  for (const actor of model.actors ?? []) {
     lines.push(`participant ${actor}`);
   }
   lines.push('');
 
-  for (const msg of (model.messages ?? [])) {
+  for (const msg of model.messages ?? []) {
     lines.push(`${msg.from} ${msgArrow(msg)} ${msg.to} : ${msg.label}`);
   }
 

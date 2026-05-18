@@ -69,12 +69,17 @@
     }
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "bun-types": "latest",
+    "eslint": "^10.4.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.8.3",
     "react": "^18",
     "react-dom": "^18",
     "tsup": "^8",
-    "typescript": "^5"
+    "typescript": "^5",
+    "typescript-eslint": "^8.59.3"
   }
 }

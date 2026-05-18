@@ -7,7 +7,12 @@ import { Model } from '../core/model.js';
 
 describe('Round-trip: flowchart → Mermaid → model', () => {
   it('preserves node count', () => {
-    const fc = flowchart('Flow').node('a', 'A').node('b', 'B').node('c', 'C').edge('a', 'b').edge('b', 'c');
+    const fc = flowchart('Flow')
+      .node('a', 'A')
+      .node('b', 'B')
+      .node('c', 'C')
+      .edge('a', 'b')
+      .edge('b', 'c');
     const model = fromMermaid(fc.toMermaid()).toJSON();
     expect(model.nodes).toHaveLength(3);
     expect(model.edges).toHaveLength(2);
@@ -22,7 +27,10 @@ describe('Round-trip: flowchart → Mermaid → model', () => {
 
 describe('Round-trip: flowchart → JSON → model', () => {
   it('is lossless', () => {
-    const fc = flowchart('Test').node('x', 'X', { shape: 'diamond' }).node('y', 'Y').edge('x', 'y', { label: 'ok' });
+    const fc = flowchart('Test')
+      .node('x', 'X', { shape: 'diamond' })
+      .node('y', 'Y')
+      .edge('x', 'y', { label: 'ok' });
     const model = fromJSON(fc.toJSON()).toJSON();
     expect(model.nodes[0]!.shape).toBe('diamond');
     expect(model.edges[0]!.label).toBe('ok');
@@ -33,7 +41,7 @@ describe('Round-trip: flowchart → JSON → model', () => {
 describe('fromMermaid: simple graph', () => {
   it('parses graph TD with bare nodes', () => {
     const model = fromMermaid('graph TD\n  A-->B\n  B-->C').toJSON();
-    expect(model.nodes.map(n => n.id)).toEqual(expect.arrayContaining(['A', 'B', 'C']));
+    expect(model.nodes.map((n) => n.id)).toEqual(expect.arrayContaining(['A', 'B', 'C']));
     expect(model.edges).toHaveLength(2);
   });
 });
@@ -120,16 +128,10 @@ describe('Mermaid importer hardening', () => {
   });
 
   it('parses subgraph blocks and tags contained nodes with metadata.group', () => {
-    const src = [
-      'graph TD',
-      '  subgraph backend',
-      '    A-->B',
-      '  end',
-      '  C-->D',
-    ].join('\n');
+    const src = ['graph TD', '  subgraph backend', '    A-->B', '  end', '  C-->D'].join('\n');
     const m = fromMermaid(src).toJSON();
-    const a = m.nodes.find(n => n.id === 'A');
-    const c = m.nodes.find(n => n.id === 'C');
+    const a = m.nodes.find((n) => n.id === 'A');
+    const c = m.nodes.find((n) => n.id === 'C');
     expect(a?.metadata?.group).toBe('backend');
     expect(c?.metadata?.group).toBeUndefined();
   });
@@ -165,11 +167,14 @@ describe('Model validation', () => {
   it('validate() detects duplicate node ids', () => {
     const m = Model.fromData({
       type: 'flowchart',
-      nodes: [{ id: 'a', label: 'A' }, { id: 'a', label: 'A2' }],
+      nodes: [
+        { id: 'a', label: 'A' },
+        { id: 'a', label: 'A2' },
+      ],
       edges: [],
     });
     const errs = m.validate();
-    expect(errs.some(e => e.kind === 'duplicate-node-id')).toBe(true);
+    expect(errs.some((e) => e.kind === 'duplicate-node-id')).toBe(true);
   });
 });
 

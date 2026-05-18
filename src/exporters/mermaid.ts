@@ -50,8 +50,8 @@ function msgArrow(msg: SequenceMessage): string {
 function exportSequence(model: DiagramModel): string {
   const lines: string[] = ['sequenceDiagram'];
   if (model.title) lines.unshift(`---\ntitle: ${model.title}\n---`);
-  for (const actor of (model.actors ?? [])) lines.push(`  participant ${actor}`);
-  for (const msg of (model.messages ?? [])) {
+  for (const actor of model.actors ?? []) lines.push(`  participant ${actor}`);
+  for (const msg of model.messages ?? []) {
     lines.push(`  ${msg.from}${msgArrow(msg)}${msg.to}: ${msg.label}`);
   }
   return lines.join('\n');

@@ -1,4 +1,12 @@
-import type { DiagramModel, DiagramNode, DiagramEdge, DiagramType, DiagramVariant, SequenceMessage, ValidationError } from './types.js';
+import type {
+  DiagramModel,
+  DiagramNode,
+  DiagramEdge,
+  DiagramType,
+  DiagramVariant,
+  SequenceMessage,
+  ValidationError,
+} from './types.js';
 
 /**
  * Mutable builder around a `DiagramModel`. Every public mutator returns
@@ -21,7 +29,15 @@ export class Model {
    * @param variant  Optional UI variant (flowchart models only).
    */
   constructor(type: DiagramType, title?: string, variant?: DiagramVariant) {
-    this.data = { type, ...(variant ? { variant } : {}), title, nodes: [], edges: [], actors: [], messages: [] };
+    this.data = {
+      type,
+      ...(variant ? { variant } : {}),
+      title,
+      nodes: [],
+      edges: [],
+      actors: [],
+      messages: [],
+    };
   }
 
   /**
@@ -47,7 +63,7 @@ export class Model {
    * not leak in.
    */
   addNode(node: DiagramNode): this {
-    if (this.data.nodes.find(n => n.id === node.id)) {
+    if (this.data.nodes.find((n) => n.id === node.id)) {
       throw new Error(`Node with id "${node.id}" already exists`);
     }
     this.data.nodes.push({ ...node });
@@ -59,7 +75,7 @@ export class Model {
    * field itself cannot be patched — to rename, remove + re-add.
    */
   updateNode(id: string, patch: Partial<Omit<DiagramNode, 'id'>>): this {
-    const node = this.data.nodes.find(n => n.id === id);
+    const node = this.data.nodes.find((n) => n.id === id);
     if (!node) throw new Error(`Node "${id}" not found`);
     const { __proto__, constructor, ...safe } = patch as Record<string, unknown>;
     Object.assign(node, safe);
@@ -71,8 +87,8 @@ export class Model {
    * to call on a missing id (no-op).
    */
   removeNode(id: string): this {
-    this.data.nodes = this.data.nodes.filter(n => n.id !== id);
-    this.data.edges = this.data.edges.filter(e => e.from !== id && e.to !== id);
+    this.data.nodes = this.data.nodes.filter((n) => n.id !== id);
+    this.data.edges = this.data.edges.filter((e) => e.from !== id && e.to !== id);
     return this;
   }
 
@@ -83,13 +99,13 @@ export class Model {
    * to detect them.)
    */
   addEdge(edge: DiagramEdge): this {
-    if (this.data.edges.find(e => e.id === edge.id)) {
+    if (this.data.edges.find((e) => e.id === edge.id)) {
       throw new Error(`Edge with id "${edge.id}" already exists`);
     }
-    if (!this.data.nodes.find(n => n.id === edge.from)) {
+    if (!this.data.nodes.find((n) => n.id === edge.from)) {
       throw new Error(`Edge "${edge.id}" references unknown source node "${edge.from}"`);
     }
-    if (!this.data.nodes.find(n => n.id === edge.to)) {
+    if (!this.data.nodes.find((n) => n.id === edge.to)) {
       throw new Error(`Edge "${edge.id}" references unknown target node "${edge.to}"`);
     }
     this.data.edges.push({ ...edge });
@@ -105,22 +121,42 @@ export class Model {
     const errors: ValidationError[] = [];
     const nodeIds = new Set<string>();
     for (const n of this.data.nodes) {
-      if (nodeIds.has(n.id)) errors.push({ kind: 'duplicate-node-id', id: n.id, message: `Duplicate node id "${n.id}"` });
+      if (nodeIds.has(n.id))
+        errors.push({
+          kind: 'duplicate-node-id',
+          id: n.id,
+          message: `Duplicate node id "${n.id}"`,
+        });
       nodeIds.add(n.id);
     }
     const edgeIds = new Set<string>();
     for (const e of this.data.edges) {
-      if (edgeIds.has(e.id)) errors.push({ kind: 'duplicate-edge-id', id: e.id, message: `Duplicate edge id "${e.id}"` });
+      if (edgeIds.has(e.id))
+        errors.push({
+          kind: 'duplicate-edge-id',
+          id: e.id,
+          message: `Duplicate edge id "${e.id}"`,
+        });
       edgeIds.add(e.id);
-      if (!nodeIds.has(e.from)) errors.push({ kind: 'dangling-from', id: e.id, message: `Edge "${e.id}" references unknown source node "${e.from}"` });
-      if (!nodeIds.has(e.to)) errors.push({ kind: 'dangling-to', id: e.id, message: `Edge "${e.id}" references unknown target node "${e.to}"` });
+      if (!nodeIds.has(e.from))
+        errors.push({
+          kind: 'dangling-from',
+          id: e.id,
+          message: `Edge "${e.id}" references unknown source node "${e.from}"`,
+        });
+      if (!nodeIds.has(e.to))
+        errors.push({
+          kind: 'dangling-to',
+          id: e.id,
+          message: `Edge "${e.id}" references unknown target node "${e.to}"`,
+        });
     }
     return errors;
   }
 
   /** Remove an edge by id. Safe to call on a missing id (no-op). */
   removeEdge(id: string): this {
-    this.data.edges = this.data.edges.filter(e => e.id !== id);
+    this.data.edges = this.data.edges.filter((e) => e.id !== id);
     return this;
   }
 

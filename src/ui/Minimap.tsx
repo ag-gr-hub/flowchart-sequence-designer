@@ -1,11 +1,17 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useRef } from 'react';
 import type { DiagramModel, DiagramNode } from '../core/types.js';
 
 const W = 168;
 const H = 112;
 const PAD = 18;
 
-interface NodeBox { id: string; x: number; y: number; w: number; h: number }
+interface NodeBox {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 export interface MinimapProps {
   model: DiagramModel;
@@ -23,11 +29,18 @@ export interface MinimapProps {
 }
 
 export function Minimap({
-  model, viewportW, viewportH, transform, measureNode, onCenterOn, isDark, accentColor,
+  model,
+  viewportW,
+  viewportH,
+  transform,
+  measureNode,
+  onCenterOn,
+  isDark,
+  accentColor,
 }: MinimapProps) {
   const dragRef = useRef<{ active: boolean } | null>(null);
 
-  const boxes: NodeBox[] = model.nodes.map(n => {
+  const boxes: NodeBox[] = model.nodes.map((n) => {
     const { w, h } = measureNode(n);
     return { id: n.id, x: n.x ?? 0, y: n.y ?? 0, w, h };
   });
@@ -40,14 +53,21 @@ export function Minimap({
   const vw = viewportW / transform.scale;
   const vh = viewportH / transform.scale;
 
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const b of boxes) {
-    minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
-    maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
+    minX = Math.min(minX, b.x);
+    minY = Math.min(minY, b.y);
+    maxX = Math.max(maxX, b.x + b.w);
+    maxY = Math.max(maxY, b.y + b.h);
   }
   // Include the viewport so the user always sees their current position.
-  minX = Math.min(minX, vx); minY = Math.min(minY, vy);
-  maxX = Math.max(maxX, vx + vw); maxY = Math.max(maxY, vy + vh);
+  minX = Math.min(minX, vx);
+  minY = Math.min(minY, vy);
+  maxX = Math.max(maxX, vx + vw);
+  maxY = Math.max(maxY, vy + vh);
 
   const contentW = Math.max(1, maxX - minX);
   const contentH = Math.max(1, maxY - minY);
@@ -65,13 +85,13 @@ export function Minimap({
     y: (my - offsetY) / scale,
   });
 
-  const panTo = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+  const panTo = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
     const { x, y } = unproject(mx, my);
     onCenterOn(x, y);
-  }, [onCenterOn, scale, offsetX, offsetY]); // eslint-disable-line react-hooks/exhaustive-deps
+  };
 
   const onMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     e.stopPropagation();
@@ -82,7 +102,9 @@ export function Minimap({
     if (!dragRef.current?.active) return;
     panTo(e);
   };
-  const onMouseUp = () => { dragRef.current = null; };
+  const onMouseUp = () => {
+    dragRef.current = null;
+  };
 
   const bg = isDark ? 'rgba(15,23,42,0.92)' : 'rgba(255,255,255,0.94)';
   const border = isDark ? '#334155' : '#e2e8f0';
@@ -105,15 +127,20 @@ export function Minimap({
       aria-label="Minimap — click to re-center the viewport"
       role="img"
       style={{
-        position: 'absolute', bottom: 14, right: 14,
-        background: bg, border: `1px solid ${border}`,
-        borderRadius: 10, padding: 6,
+        position: 'absolute',
+        bottom: 14,
+        right: 14,
+        background: bg,
+        border: `1px solid ${border}`,
+        borderRadius: 10,
+        padding: 6,
         boxShadow: isDark ? '0 8px 20px rgba(0,0,0,0.45)' : '0 6px 18px rgba(15,23,42,0.08)',
         backdropFilter: 'blur(6px)',
       }}
     >
       <svg
-        width={W} height={H}
+        width={W}
+        height={H}
         style={{ display: 'block', cursor: 'grab', borderRadius: 6 }}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
@@ -121,22 +148,29 @@ export function Minimap({
         onMouseLeave={onMouseUp}
       >
         <rect width={W} height={H} rx={6} fill={isDark ? '#0f172a' : '#fafbfc'} />
-        {boxes.map(b => {
+        {boxes.map((b) => {
           const p = project(b.x, b.y);
           return (
             <rect
               key={b.id}
-              x={p.x} y={p.y}
-              width={Math.max(2, b.w * scale)} height={Math.max(2, b.h * scale)}
-              rx={2} fill={nodeFill}
+              x={p.x}
+              y={p.y}
+              width={Math.max(2, b.w * scale)}
+              height={Math.max(2, b.h * scale)}
+              rx={2}
+              fill={nodeFill}
             />
           );
         })}
         <rect
-          x={vpRect.x} y={vpRect.y}
-          width={vpRect.w} height={vpRect.h}
+          x={vpRect.x}
+          y={vpRect.y}
+          width={vpRect.w}
+          height={vpRect.h}
           rx={3}
-          fill={viewFill} stroke={viewStroke} strokeWidth={1.25}
+          fill={viewFill}
+          stroke={viewStroke}
+          strokeWidth={1.25}
         />
       </svg>
     </div>

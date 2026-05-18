@@ -21,7 +21,7 @@ interface ToolbarProps {
 export function Toolbar({ onExport, onImport, allowedExports, allowImport = true }: ToolbarProps) {
   const [importOpen, setImportOpen] = useState(false);
   const formats = allowedExports
-    ? ALL_FORMATS.filter(f => allowedExports.includes(f.key))
+    ? ALL_FORMATS.filter((f) => allowedExports.includes(f.key))
     : ALL_FORMATS;
 
   return (
@@ -43,9 +43,16 @@ export function Toolbar({ onExport, onImport, allowedExports, allowImport = true
         )}
         {formats.length > 0 && (
           <>
-            <span style={{ fontSize: 11, color: darkTheme.inputText, margin: '0 4px' }}>Export →</span>
-            {formats.map(f => (
-              <button key={f.key} onClick={() => onExport(f.key)} aria-label={`Export as ${f.label}`} style={exportBtn}>
+            <span style={{ fontSize: 11, color: darkTheme.inputText, margin: '0 4px' }}>
+              Export →
+            </span>
+            {formats.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => onExport(f.key)}
+                aria-label={`Export as ${f.label}`}
+                style={exportBtn}
+              >
                 {f.label}
               </button>
             ))}
@@ -53,11 +60,7 @@ export function Toolbar({ onExport, onImport, allowedExports, allowImport = true
         )}
       </div>
       {onImport && (
-        <ImportDialog
-          open={importOpen}
-          onClose={() => setImportOpen(false)}
-          onImport={onImport}
-        />
+        <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} onImport={onImport} />
       )}
     </div>
   );
