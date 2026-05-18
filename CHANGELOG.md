@@ -6,6 +6,45 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-05-18
+
+### Fixed
+- Resolved all CodeQL security alerts: incomplete multi-character sanitization
+  (while loops), polynomial regex backtracking (bounded quantifiers, negated
+  character classes), and unused variable warnings.
+- Fixed ESLint `no-useless-escape` error in mermaid parser EDGE_RE.
+
+## [1.2.1] - 2026-05-18
+
+### Fixed
+- Bumped Vite in demo from ^5.4.2 to ^6.4.2 to resolve CVE-2026-39365
+  (path traversal in optimized deps `.map` handling).
+- Fixed CI publish workflow: added `actions/setup-node` with `registry-url`
+  for proper npm authentication, and `contents: write` permission for
+  GitHub Release creation.
+
+## [1.2.0] - 2026-05-18
+
+### Added
+- Input sanitization module (`src/core/sanitize.ts`): `sanitizeLabel()`,
+  `sanitizeURL()`, `sanitizeForSVG()` — strips HTML tags, dangerous URI
+  schemes, event handlers, and control characters.
+- Resource exhaustion limits: MAX_NODES=500, MAX_EDGES=2000, MAX_ACTORS=100,
+  MAX_MESSAGES=2000, MAX_IMPORT_LENGTH=2MB.
+- JSON importer validates schema and strips `__proto__`/`constructor`/`prototype`
+  keys to prevent prototype pollution.
+- `SECURITY.md` — vulnerability disclosure policy.
+- ESLint + Prettier dev tooling with flat config.
+- CI pipeline: typecheck, lint, format check, test, build, bundle size gate.
+- CodeQL weekly security scanning + on PRs.
+- Auto-publish to npm on `v*` tag push (with GitHub Release).
+- Dependabot for npm + GitHub Actions dependencies (weekly).
+- `noUncheckedIndexedAccess` in tsconfig for stricter type safety.
+- CSP meta tag in demo site.
+- 28 new security tests (105 total).
+
+## [1.1.0] - 2026-05-17
+
 ### Added
 - Toast notification system (`useToast` hook + `ToastContainer`) for
   import/export success/failure feedback in both editors. Replaces silent
