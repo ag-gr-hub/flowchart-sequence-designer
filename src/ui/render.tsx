@@ -22,17 +22,37 @@ const STYLE_LABEL: React.CSSProperties = { pointerEvents: 'none', userSelect: 'n
 const STYLE_BLUR: React.CSSProperties = { filter: 'blur(4px)' };
 const STYLE_EDGE_HIT: React.CSSProperties = { cursor: 'pointer' };
 const STYLE_NO_EVENTS: React.CSSProperties = { pointerEvents: 'none' };
-const STYLE_PORT_HOVER: React.CSSProperties = { cursor: 'crosshair', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.18))' };
-const STYLE_WAYPOINT: React.CSSProperties = { cursor: 'grab', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.25))' };
+const STYLE_PORT_HOVER: React.CSSProperties = {
+  cursor: 'crosshair',
+  filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.18))',
+};
+const STYLE_WAYPOINT: React.CSSProperties = {
+  cursor: 'grab',
+  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.25))',
+};
 const STYLE_EDGE_LABEL_HIT: React.CSSProperties = { cursor: 'text' };
 
 // ── Standard node shape ────────────────────────────────────────────────────
-export function NodeShape({ node, selected, variant, stepNumber, t, isDark, w }: {
-  node: DiagramNode; selected: boolean; variant: DiagramVariant;
-  stepNumber?: number; t: ThemeColors; isDark: boolean; w: number;
+export function NodeShape({
+  node,
+  selected,
+  variant,
+  stepNumber,
+  t,
+  isDark,
+  w,
+}: {
+  node: DiagramNode;
+  selected: boolean;
+  variant: DiagramVariant;
+  stepNumber?: number;
+  t: ThemeColors;
+  isDark: boolean;
+  w: number;
 }) {
   const acc = variantAccent(variant, isDark);
-  const cx = w / 2, cy = NODE_H / 2;
+  const cx = w / 2,
+    cy = NODE_H / 2;
   const stroke = selected ? acc.color : t.nodeStroke;
   const fill = selected ? t.nodeSelectedFill : t.nodeFill;
   const sw = selected ? 1.75 : 1.25;
@@ -41,22 +61,69 @@ export function NodeShape({ node, selected, variant, stepNumber, t, isDark, w }:
     <>
       {node.shape === 'circle' ? (
         <>
-          <circle cx={cx} cy={cy} r={NODE_H / 2 + 3} fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={STYLE_BLUR} />
-          <circle cx={cx} cy={cy} r={NODE_H / 2 + 1.5} fill="none" stroke={acc.color} strokeWidth={1} opacity={0.55} />
+          <circle
+            cx={cx}
+            cy={cy}
+            r={NODE_H / 2 + 3}
+            fill="none"
+            stroke={acc.color}
+            strokeWidth={6}
+            opacity={0.18}
+            style={STYLE_BLUR}
+          />
+          <circle
+            cx={cx}
+            cy={cy}
+            r={NODE_H / 2 + 1.5}
+            fill="none"
+            stroke={acc.color}
+            strokeWidth={1}
+            opacity={0.55}
+          />
         </>
       ) : node.shape === 'diamond' ? (
         <>
-          <polygon points={`${cx},${-5} ${w + 5},${cy} ${cx},${NODE_H + 5} ${-5},${cy}`}
-            fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={STYLE_BLUR} />
-          <polygon points={`${cx},${-2} ${w + 2},${cy} ${cx},${NODE_H + 2} ${-2},${cy}`}
-            fill="none" stroke={acc.color} strokeWidth={1} opacity={0.55} />
+          <polygon
+            points={`${cx},${-5} ${w + 5},${cy} ${cx},${NODE_H + 5} ${-5},${cy}`}
+            fill="none"
+            stroke={acc.color}
+            strokeWidth={6}
+            opacity={0.18}
+            style={STYLE_BLUR}
+          />
+          <polygon
+            points={`${cx},${-2} ${w + 2},${cy} ${cx},${NODE_H + 2} ${-2},${cy}`}
+            fill="none"
+            stroke={acc.color}
+            strokeWidth={1}
+            opacity={0.55}
+          />
         </>
       ) : (
         <>
-          <rect x={-4} y={-4} width={w + 8} height={NODE_H + 8} rx={18}
-            fill="none" stroke={acc.color} strokeWidth={6} opacity={0.18} style={STYLE_BLUR} />
-          <rect x={-1.5} y={-1.5} width={w + 3} height={NODE_H + 3} rx={15.5}
-            fill="none" stroke={acc.color} strokeWidth={1} opacity={0.5} />
+          <rect
+            x={-4}
+            y={-4}
+            width={w + 8}
+            height={NODE_H + 8}
+            rx={18}
+            fill="none"
+            stroke={acc.color}
+            strokeWidth={6}
+            opacity={0.18}
+            style={STYLE_BLUR}
+          />
+          <rect
+            x={-1.5}
+            y={-1.5}
+            width={w + 3}
+            height={NODE_H + 3}
+            rx={15.5}
+            fill="none"
+            stroke={acc.color}
+            strokeWidth={1}
+            opacity={0.5}
+          />
         </>
       )}
     </>
@@ -66,31 +133,109 @@ export function NodeShape({ node, selected, variant, stepNumber, t, isDark, w }:
   const badge = variant === 'journey' && stepNumber !== undefined && (
     <>
       <circle cx={14} cy={14} r={10} fill={badgeColor} />
-      <text x={14} y={18} textAnchor="middle" fontSize={9} fill="white" fontWeight="700" style={STYLE_LABEL}>{stepNumber}</text>
+      <text
+        x={14}
+        y={18}
+        textAnchor="middle"
+        fontSize={9}
+        fill="white"
+        fontWeight="700"
+        style={STYLE_LABEL}
+      >
+        {stepNumber}
+      </text>
     </>
   );
 
   switch (node.shape) {
     case 'diamond': {
       const pts = `${cx},0 ${w},${cy} ${cx},${NODE_H} 0,${cy}`;
-      return <>{glow}<polygon points={pts} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
+      return (
+        <>
+          {glow}
+          <polygon
+            points={pts}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth={sw}
+            filter="url(#nodeShadow)"
+          />
+          {badge}
+        </>
+      );
     }
     case 'circle':
-      return <>{glow}<circle cx={cx} cy={cy} r={NODE_H / 2 - 1} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
+      return (
+        <>
+          {glow}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={NODE_H / 2 - 1}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth={sw}
+            filter="url(#nodeShadow)"
+          />
+          {badge}
+        </>
+      );
     case 'parallelogram':
-      return <>{glow}<polygon points={`14,0 ${w},0 ${w - 14},${NODE_H} 0,${NODE_H}`} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
+      return (
+        <>
+          {glow}
+          <polygon
+            points={`14,0 ${w},0 ${w - 14},${NODE_H} 0,${NODE_H}`}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth={sw}
+            filter="url(#nodeShadow)"
+          />
+          {badge}
+        </>
+      );
     default:
-      return <>{glow}<rect width={w} height={NODE_H} rx={14} fill={fill} stroke={stroke} strokeWidth={sw} filter="url(#nodeShadow)" />{badge}</>;
+      return (
+        <>
+          {glow}
+          <rect
+            width={w}
+            height={NODE_H}
+            rx={14}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth={sw}
+            filter="url(#nodeShadow)"
+          />
+          {badge}
+        </>
+      );
   }
 }
 
 // ── Question node ──────────────────────────────────────────────────────────
 const ANSWER_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-export function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, qW }: {
-  node: DiagramNode; selected: boolean; edges: DiagramEdge[];
-  isDark: boolean; qW: number;
-  onAnswerPortDown: (e: React.MouseEvent, nodeId: string, answer: string, portX: number, portY: number) => void;
+export function QuestionNode({
+  node,
+  selected,
+  edges,
+  isDark,
+  onAnswerPortDown,
+  qW,
+}: {
+  node: DiagramNode;
+  selected: boolean;
+  edges: DiagramEdge[];
+  isDark: boolean;
+  qW: number;
+  onAnswerPortDown: (
+    e: React.MouseEvent,
+    nodeId: string,
+    answer: string,
+    portX: number,
+    portY: number,
+  ) => void;
 }) {
   const answers: string[] = (node.metadata?.answers as string[] | undefined) ?? [];
   const totalH = questionNodeH(answers);
@@ -98,7 +243,7 @@ export function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, 
   const amberSoft = isDark ? 'rgba(251,191,36,0.14)' : '#fef9ee';
   const amberLine = isDark ? 'rgba(251,191,36,0.18)' : '#fde68a';
   const nodeBg = isDark ? '#1e293b' : '#ffffff';
-  const nodeBorder = selected ? amber : (isDark ? 'rgba(251,191,36,0.25)' : '#fde68a');
+  const nodeBorder = selected ? amber : isDark ? 'rgba(251,191,36,0.25)' : '#fde68a';
   const cardBg = isDark ? '#0f172a' : '#fffdf7';
   const cardBgConnected = isDark ? 'rgba(251,191,36,0.12)' : '#fef3c7';
   const cardBorder = isDark ? '#1e293b' : '#fde68a';
@@ -110,39 +255,108 @@ export function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, 
 
   const glow = selected && (
     <>
-      <rect x={-4} y={-4} width={qW + 8} height={totalH + 8} rx={18}
-        fill="none" stroke={amber} strokeWidth={6} opacity={0.2}
-        style={STYLE_BLUR} />
-      <rect x={-1.5} y={-1.5} width={qW + 3} height={totalH + 3} rx={15.5}
-        fill="none" stroke={amber} strokeWidth={1} opacity={0.55} />
+      <rect
+        x={-4}
+        y={-4}
+        width={qW + 8}
+        height={totalH + 8}
+        rx={18}
+        fill="none"
+        stroke={amber}
+        strokeWidth={6}
+        opacity={0.2}
+        style={STYLE_BLUR}
+      />
+      <rect
+        x={-1.5}
+        y={-1.5}
+        width={qW + 3}
+        height={totalH + 3}
+        rx={15.5}
+        fill="none"
+        stroke={amber}
+        strokeWidth={1}
+        opacity={0.55}
+      />
     </>
   );
 
   return (
     <>
       {glow}
-      <rect width={qW} height={totalH} rx={14} fill={nodeBg} stroke={nodeBorder} strokeWidth={selected ? 2 : 1.5} filter="url(#nodeShadow)" />
+      <rect
+        width={qW}
+        height={totalH}
+        rx={14}
+        fill={nodeBg}
+        stroke={nodeBorder}
+        strokeWidth={selected ? 2 : 1.5}
+        filter="url(#nodeShadow)"
+      />
       <clipPath id={`qhdr-${node.id}`}>
         <rect width={qW} height={Q_BASE_H} rx={14} />
       </clipPath>
       <rect width={qW} height={Q_BASE_H} fill={amberSoft} clipPath={`url(#qhdr-${node.id})`} />
       <rect x={0} y={0} width={4} height={Q_BASE_H} rx={2} fill={amber} />
       <rect x={12} y={14} width={28} height={28} rx={8} fill={amber} />
-      <text x={26} y={33} textAnchor="middle" fontSize={15} fontWeight="900" fill="white" style={STYLE_LABEL}>?</text>
-      <text style={STYLE_LABEL}
-        fontFamily="ui-sans-serif,system-ui,sans-serif">
-        <tspan x={50} y={27} fontSize={9} fontWeight={700} fill={textSub} letterSpacing={0.6} textAnchor="start">QUESTION</tspan>
-        <tspan x={50} dy={15} fontSize={13} fontWeight={700} fill={selected ? amber : textMain} textAnchor="start">
+      <text
+        x={26}
+        y={33}
+        textAnchor="middle"
+        fontSize={15}
+        fontWeight="900"
+        fill="white"
+        style={STYLE_LABEL}
+      >
+        ?
+      </text>
+      <text style={STYLE_LABEL} fontFamily="ui-sans-serif,system-ui,sans-serif">
+        <tspan
+          x={50}
+          y={27}
+          fontSize={9}
+          fontWeight={700}
+          fill={textSub}
+          letterSpacing={0.6}
+          textAnchor="start"
+        >
+          QUESTION
+        </tspan>
+        <tspan
+          x={50}
+          dy={15}
+          fontSize={13}
+          fontWeight={700}
+          fill={selected ? amber : textMain}
+          textAnchor="start"
+        >
           {node.label}
         </tspan>
       </text>
       <line x1={0} y1={Q_BASE_H} x2={qW} y2={Q_BASE_H} stroke={amberLine} strokeWidth={1} />
       {answers.length === 0 && (
         <>
-          <text x={qW / 2} y={Q_BASE_H + 22} textAnchor="middle" fontSize={10} fill={amber} opacity={0.4} fontWeight={600} style={STYLE_LABEL}>
+          <text
+            x={qW / 2}
+            y={Q_BASE_H + 22}
+            textAnchor="middle"
+            fontSize={10}
+            fill={amber}
+            opacity={0.4}
+            fontWeight={600}
+            style={STYLE_LABEL}
+          >
             No answers yet
           </text>
-          <text x={qW / 2} y={Q_BASE_H + 36} textAnchor="middle" fontSize={9} fill={textSub} opacity={0.7} style={STYLE_LABEL}>
+          <text
+            x={qW / 2}
+            y={Q_BASE_H + 36}
+            textAnchor="middle"
+            fontSize={9}
+            fill={textSub}
+            opacity={0.7}
+            style={STYLE_LABEL}
+          >
             Open panel → Add Answer
           </text>
         </>
@@ -154,39 +368,71 @@ export function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, 
         const cardY = Q_BASE_H + 7;
         const cardH = Q_ANS_ROW_H - 20;
         const cx = cardX + cW / 2;
-        const connected = edges.some(e => e.from === node.id && e.label === ans);
+        const connected = edges.some((e) => e.from === node.id && e.label === ans);
         const letter = i < 26 ? ANSWER_LETTERS[i] : `${i + 1}`;
         const maxChars = Math.max(2, Math.floor((cW - 20) / 7.5));
         const displayAns = ans.length > maxChars ? ans.slice(0, maxChars - 1) + '…' : ans;
 
         return (
           <g key={ans + i}>
-            <rect x={cardX} y={cardY} width={cW} height={cardH} rx={8}
+            <rect
+              x={cardX}
+              y={cardY}
+              width={cW}
+              height={cardH}
+              rx={8}
               fill={connected ? cardBgConnected : cardBg}
-              stroke={connected ? amber : cardBorder} strokeWidth={connected ? 1.5 : 1} />
-            <rect x={cx - 11} y={cardY + 7} width={22} height={22} rx={6}
-              fill={connected ? amber : (isDark ? '#1e293b' : '#fef3c7')} />
-            <text x={cx} y={cardY + 22} textAnchor="middle" fontSize={10} fontWeight={800}
+              stroke={connected ? amber : cardBorder}
+              strokeWidth={connected ? 1.5 : 1}
+            />
+            <rect
+              x={cx - 11}
+              y={cardY + 7}
+              width={22}
+              height={22}
+              rx={6}
+              fill={connected ? amber : isDark ? '#1e293b' : '#fef3c7'}
+            />
+            <text
+              x={cx}
+              y={cardY + 22}
+              textAnchor="middle"
+              fontSize={10}
+              fontWeight={800}
               fill={connected ? '#fff' : amber}
-              style={STYLE_LABEL}>
+              style={STYLE_LABEL}
+            >
               {letter}
             </text>
-            <text x={cx} y={cardY + 46} textAnchor="middle" fontSize={11} fontWeight={500}
+            <text
+              x={cx}
+              y={cardY + 46}
+              textAnchor="middle"
+              fontSize={11}
+              fontWeight={500}
               fill={connected ? (isDark ? '#fef3c7' : '#92400e') : textAns}
               fontFamily="ui-sans-serif,system-ui,sans-serif"
-              style={STYLE_LABEL}>
+              style={STYLE_LABEL}
+            >
               {displayAns}
             </text>
             <circle
-              cx={cx} cy={portRowY} r={7}
-              fill={connected ? amber : (isDark ? '#0f172a' : '#fff')}
-              stroke={amber} strokeWidth={1.5}
+              cx={cx}
+              cy={portRowY}
+              r={7}
+              fill={connected ? amber : isDark ? '#0f172a' : '#fff'}
+              stroke={amber}
+              strokeWidth={1.5}
               style={STYLE_PORT_HOVER}
-              onMouseDown={e => onAnswerPortDown(e, node.id, ans, cx, portRowY)}
+              onMouseDown={(e) => onAnswerPortDown(e, node.id, ans, cx, portRowY)}
             />
             <path
               d={`M ${cx - 3} ${portRowY - 2} L ${cx} ${portRowY + 2} L ${cx + 3} ${portRowY - 2}`}
-              fill="none" stroke={connected ? '#fff' : amber} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
+              fill="none"
+              stroke={connected ? '#fff' : amber}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
               style={STYLE_NO_EVENTS}
             />
           </g>
@@ -197,9 +443,27 @@ export function QuestionNode({ node, selected, edges, isDark, onAnswerPortDown, 
 }
 
 // ── Edge ───────────────────────────────────────────────────────────────────
-export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editValue, onEditChange, onEditCommit, onEditCancel, onDoubleClick, onContextMenu, onWaypointDown }: {
-  edge: DiagramEdge; nodes: DiagramNode[]; variant: DiagramVariant;
-  t: ThemeColors; isDark: boolean;
+export function EdgeLine({
+  edge,
+  nodes,
+  variant,
+  t,
+  isDark,
+  acc,
+  editing,
+  editValue,
+  onEditChange,
+  onEditCommit,
+  onEditCancel,
+  onDoubleClick,
+  onContextMenu,
+  onWaypointDown,
+}: {
+  edge: DiagramEdge;
+  nodes: DiagramNode[];
+  variant: DiagramVariant;
+  t: ThemeColors;
+  isDark: boolean;
   acc: { color: string };
   editing?: boolean;
   editValue?: string;
@@ -211,11 +475,13 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
   onWaypointDown?: (e: React.MouseEvent, edgeId: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
-  const from = nodes.find(n => n.id === edge.from);
-  const to = nodes.find(n => n.id === edge.to);
+  const from = nodes.find((n) => n.id === edge.from);
+  const to = nodes.find((n) => n.id === edge.to);
   if (!from || !to) return null;
 
-  let x1: number, y1: number, exitDir: 'bottom' | 'right' | 'left' = 'bottom';
+  let x1: number,
+    y1: number,
+    exitDir: 'bottom' | 'right' | 'left' = 'bottom';
   const amberColor = isDark ? C.amberDark : C.amber;
 
   if (variant === 'question') {
@@ -246,7 +512,8 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
   // Handle position: at the waypoint when set; otherwise at the natural midpoint of the cubic.
   const hx = wp ? wp.x : (x1 + x2) / 2;
   const hy = wp ? wp.y : (y1 + y2) / 2;
-  const mx = hx, my = hy - 8;
+  const mx = hx,
+    my = hy - 8;
   const dash = edge.style === 'dashed' ? '7 4' : edge.style === 'dotted' ? '2 4' : undefined;
   const edgeClr = variant === 'question' ? amberColor : t.edgeColor;
 
@@ -260,14 +527,21 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
   const flowClass = dash ? undefined : isAmber ? 'edge-flow-amber' : 'edge-flow';
   return (
     <g
-      onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick?.(edge.id); }}
-      onContextMenu={(e) => { onContextMenu?.(e, edge.id); }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onDoubleClick?.(edge.id);
+      }}
+      onContextMenu={(e) => {
+        onContextMenu?.(e, edge.id);
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <path d={d} fill="none" stroke="transparent" strokeWidth={14} style={STYLE_EDGE_HIT} />
       <path
-        d={d} fill="none" stroke={edgeClr}
+        d={d}
+        fill="none"
+        stroke={edgeClr}
         strokeWidth={isAmber ? 2 : 1.5}
         strokeLinecap="round"
         className={flowClass}
@@ -278,11 +552,17 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
       />
       {showHandle && (
         <circle
-          cx={hx} cy={hy} r={wp ? 5 : 4}
-          fill={wp ? acc.color : (isDark ? '#1e293b' : '#fff')}
-          stroke={acc.color} strokeWidth={1.5}
+          cx={hx}
+          cy={hy}
+          r={wp ? 5 : 4}
+          fill={wp ? acc.color : isDark ? '#1e293b' : '#fff'}
+          stroke={acc.color}
+          strokeWidth={1.5}
           style={STYLE_WAYPOINT}
-          onMouseDown={(e) => { e.stopPropagation(); onWaypointDown?.(e, edge.id); }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            onWaypointDown?.(e, edge.id);
+          }}
         />
       )}
       {editing && !isAmber ? (
@@ -293,27 +573,58 @@ export function EdgeLine({ edge, nodes, variant, t, isDark, acc, editing, editVa
             onChange={(e) => onEditChange?.(e.target.value)}
             onBlur={() => onEditCommit?.()}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); onEditCommit?.(); }
-              if (e.key === 'Escape') { e.preventDefault(); onEditCancel?.(); }
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onEditCommit?.();
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                onEditCancel?.();
+              }
             }}
             onMouseDown={(e) => e.stopPropagation()}
             style={{
-              width: '100%', height: '100%', border: 'none', borderRadius: 6,
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              borderRadius: 6,
               outline: `2px solid ${acc.color}`,
-              textAlign: 'center', fontSize: 10, fontWeight: 500,
-              background: t.inputBg, color: t.inputText,
-              boxSizing: 'border-box', padding: '0 6px', fontFamily: 'inherit',
+              textAlign: 'center',
+              fontSize: 10,
+              fontWeight: 500,
+              background: t.inputBg,
+              color: t.inputText,
+              boxSizing: 'border-box',
+              padding: '0 6px',
+              fontFamily: 'inherit',
             }}
           />
         </foreignObject>
       ) : edge.label && !isAmber ? (
         <>
-          <rect x={mx - labelW / 2} y={my - 11} width={labelW} height={19} rx={5}
-            fill={t.panelBg} stroke={t.cardBorder} strokeWidth={1}
-            style={STYLE_EDGE_LABEL_HIT} />
-          <text x={mx} y={my + 4} textAnchor="middle" fontSize={10} fill={t.textSecondary}
-            fontFamily="ui-sans-serif,system-ui,sans-serif" fontWeight="500"
-            style={STYLE_LABEL}>{edge.label}</text>
+          <rect
+            x={mx - labelW / 2}
+            y={my - 11}
+            width={labelW}
+            height={19}
+            rx={5}
+            fill={t.panelBg}
+            stroke={t.cardBorder}
+            strokeWidth={1}
+            style={STYLE_EDGE_LABEL_HIT}
+          />
+          <text
+            x={mx}
+            y={my + 4}
+            textAnchor="middle"
+            fontSize={10}
+            fill={t.textSecondary}
+            fontFamily="ui-sans-serif,system-ui,sans-serif"
+            fontWeight="500"
+            style={STYLE_LABEL}
+          >
+            {edge.label}
+          </text>
         </>
       ) : null}
     </g>

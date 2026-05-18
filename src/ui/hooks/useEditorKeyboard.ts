@@ -16,7 +16,10 @@ export interface KeyCommand {
 // Helpers for building match predicates.
 const isInput = (e: KeyboardEvent): boolean => {
   const tgt = e.target as HTMLElement | null;
-  return !!(tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable));
+  return !!(
+    tgt &&
+    (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)
+  );
 };
 
 /**

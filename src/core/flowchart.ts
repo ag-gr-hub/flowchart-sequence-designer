@@ -41,7 +41,11 @@ export class FlowchartBuilder {
    * Append an edge with an auto-generated id. The id is derived from the
    * current edge list to avoid collisions with imported models.
    */
-  edge(from: string, to: string, options: Partial<Omit<DiagramEdge, 'id' | 'from' | 'to'>> = {}): this {
+  edge(
+    from: string,
+    to: string,
+    options: Partial<Omit<DiagramEdge, 'id' | 'from' | 'to'>> = {},
+  ): this {
     this.model.addEdge({ id: nextId('e', this.model.toJSON().edges), from, to, ...options });
     return this;
   }

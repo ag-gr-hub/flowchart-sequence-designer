@@ -1,6 +1,13 @@
 import { Model } from '../core/model.js';
 import type { DiagramModel } from '../core/types.js';
-import { sanitizeLabel, MAX_NODES, MAX_EDGES, MAX_ACTORS, MAX_MESSAGES, MAX_IMPORT_LENGTH } from '../core/sanitize.js';
+import {
+  sanitizeLabel,
+  MAX_NODES,
+  MAX_EDGES,
+  MAX_ACTORS,
+  MAX_MESSAGES,
+  MAX_IMPORT_LENGTH,
+} from '../core/sanitize.js';
 
 /**
  * Deep-strip prototype-pollution keys (`__proto__`, `constructor`,
@@ -51,21 +58,34 @@ export function fromJSON(json: string | DiagramModel): Model {
 
   // Resource limits
   if (data.nodes.length > MAX_NODES) {
-    throw new Error(`Import aborted: diagram has ${data.nodes.length} nodes, maximum is ${MAX_NODES}`);
+    throw new Error(
+      `Import aborted: diagram has ${data.nodes.length} nodes, maximum is ${MAX_NODES}`,
+    );
   }
   if (data.edges.length > MAX_EDGES) {
-    throw new Error(`Import aborted: diagram has ${data.edges.length} edges, maximum is ${MAX_EDGES}`);
+    throw new Error(
+      `Import aborted: diagram has ${data.edges.length} edges, maximum is ${MAX_EDGES}`,
+    );
   }
   if (data.actors && data.actors.length > MAX_ACTORS) {
-    throw new Error(`Import aborted: diagram has ${data.actors.length} actors, maximum is ${MAX_ACTORS}`);
+    throw new Error(
+      `Import aborted: diagram has ${data.actors.length} actors, maximum is ${MAX_ACTORS}`,
+    );
   }
   if (data.messages && data.messages.length > MAX_MESSAGES) {
-    throw new Error(`Import aborted: diagram has ${data.messages.length} messages, maximum is ${MAX_MESSAGES}`);
+    throw new Error(
+      `Import aborted: diagram has ${data.messages.length} messages, maximum is ${MAX_MESSAGES}`,
+    );
   }
 
   // Validate node shape (must have id + label at minimum)
   for (const node of data.nodes) {
-    if (typeof node !== 'object' || node === null || typeof node.id !== 'string' || typeof node.label !== 'string') {
+    if (
+      typeof node !== 'object' ||
+      node === null ||
+      typeof node.id !== 'string' ||
+      typeof node.label !== 'string'
+    ) {
       throw new Error('Invalid DiagramModel JSON: each node must have string id and label');
     }
     node.label = sanitizeLabel(node.label);
@@ -73,7 +93,13 @@ export function fromJSON(json: string | DiagramModel): Model {
 
   // Validate edge shape (must have id, from, to)
   for (const edge of data.edges) {
-    if (typeof edge !== 'object' || edge === null || typeof edge.id !== 'string' || typeof edge.from !== 'string' || typeof edge.to !== 'string') {
+    if (
+      typeof edge !== 'object' ||
+      edge === null ||
+      typeof edge.id !== 'string' ||
+      typeof edge.from !== 'string' ||
+      typeof edge.to !== 'string'
+    ) {
       throw new Error('Invalid DiagramModel JSON: each edge must have string id, from, and to');
     }
     if (edge.label) edge.label = sanitizeLabel(edge.label);
@@ -81,7 +107,7 @@ export function fromJSON(json: string | DiagramModel): Model {
 
   // Sanitize sequence fields
   if (data.actors) {
-    data.actors = data.actors.map(a => typeof a === 'string' ? sanitizeLabel(a) : a);
+    data.actors = data.actors.map((a) => (typeof a === 'string' ? sanitizeLabel(a) : a));
   }
   if (data.messages) {
     for (const msg of data.messages) {

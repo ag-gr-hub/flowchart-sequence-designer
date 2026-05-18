@@ -55,11 +55,7 @@ describe('FlowchartBuilder', () => {
   });
 
   it('removes node and its edges', () => {
-    const fc = flowchart()
-      .node('a', 'A')
-      .node('b', 'B')
-      .edge('a', 'b')
-      .removeNode('a');
+    const fc = flowchart().node('a', 'A').node('b', 'B').edge('a', 'b').removeNode('a');
     const data = JSON.parse(fc.toJSON());
     expect(data.nodes).toHaveLength(1);
     expect(data.edges).toHaveLength(0);

@@ -26,25 +26,44 @@ export function useExporters(
   filename: string = 'diagram',
   onSuccess?: (message: string) => void,
 ): (format: ExportFormat) => Promise<void> {
-  return useCallback(async (format: ExportFormat) => {
-    let content: string | Blob;
-    switch (format) {
-      case 'mermaid': content = toMermaid(model); break;
-      case 'plantuml': content = toPlantUML(model); break;
-      case 'json': content = toJSON(model); break;
-      case 'svg': content = toSVG(model); break;
-      case 'png': content = await toPNG(model); break;
-      default: return;
-    }
-    if (onExport) { onExport(format, content); onSuccess?.(`Exported as ${format.toUpperCase()}`); return; }
-    const url = content instanceof Blob
-      ? URL.createObjectURL(content)
-      : URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}.${format === 'plantuml' ? 'puml' : format}`;
-    a.click();
-    URL.revokeObjectURL(url);
-    onSuccess?.(`Downloaded ${a.download}`);
-  }, [model, onExport, filename, onSuccess]);
+  return useCallback(
+    async (format: ExportFormat) => {
+      let content: string | Blob;
+      switch (format) {
+        case 'mermaid':
+          content = toMermaid(model);
+          break;
+        case 'plantuml':
+          content = toPlantUML(model);
+          break;
+        case 'json':
+          content = toJSON(model);
+          break;
+        case 'svg':
+          content = toSVG(model);
+          break;
+        case 'png':
+          content = await toPNG(model);
+          break;
+        default:
+          return;
+      }
+      if (onExport) {
+        onExport(format, content);
+        onSuccess?.(`Exported as ${format.toUpperCase()}`);
+        return;
+      }
+      const url =
+        content instanceof Blob
+          ? URL.createObjectURL(content)
+          : URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}.${format === 'plantuml' ? 'puml' : format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onSuccess?.(`Downloaded ${a.download}`);
+    },
+    [model, onExport, filename, onSuccess],
+  );
 }

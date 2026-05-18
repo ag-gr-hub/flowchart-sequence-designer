@@ -50,8 +50,13 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
       const first = focusables[0]!;
       const last = focusables[focusables.length - 1]!;
       const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -101,17 +106,24 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
       >
         <header style={s.header}>
           <div style={s.brandDot} />
-          <h2 id="fsd-import-title" style={s.title}>Import diagram</h2>
+          <h2 id="fsd-import-title" style={s.title}>
+            Import diagram
+          </h2>
           <span style={s.headerHint}>Mermaid or JSON</span>
         </header>
 
         <div style={s.body}>
-          <label htmlFor="fsd-import-textarea" style={s.label}>Paste source</label>
+          <label htmlFor="fsd-import-textarea" style={s.label}>
+            Paste source
+          </label>
           <textarea
             id="fsd-import-textarea"
             ref={textareaRef}
             value={text}
-            onChange={(e) => { setText(e.target.value); setError(null); }}
+            onChange={(e) => {
+              setText(e.target.value);
+              setError(null);
+            }}
             placeholder={PLACEHOLDER}
             spellCheck={false}
             style={s.textarea}
@@ -145,7 +157,9 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
         </div>
 
         <footer style={s.footer}>
-          <button type="button" onClick={onClose} style={s.cancelBtn}>Cancel</button>
+          <button type="button" onClick={onClose} style={s.cancelBtn}>
+            Cancel
+          </button>
           <button
             type="button"
             onClick={onSubmit}
@@ -160,89 +174,144 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
   );
 }
 
-const PLACEHOLDER =
-  'flowchart TD\n  A[Start] --> B{Choice?}\n  B -->|yes| C[Done]\n  B -->|no| A';
+const PLACEHOLDER = 'flowchart TD\n  A[Start] --> B{Choice?}\n  B -->|yes| C[Done]\n  B -->|no| A';
 
 // ── Styles ────────────────────────────────────────────────────────────────
 // The dialog is launched from the Toolbar which is fixed-dark, so the modal
 // matches that surface rather than the canvas's themed palette.
 const s = {
   backdrop: {
-    position: 'fixed', inset: 0, zIndex: 100,
+    position: 'fixed',
+    inset: 0,
+    zIndex: 100,
     background: 'rgba(15, 23, 42, 0.65)',
     backdropFilter: 'blur(2px)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: 24, fontFamily: 'ui-sans-serif,system-ui,sans-serif',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    fontFamily: 'ui-sans-serif,system-ui,sans-serif',
   },
   dialog: {
-    width: 'min(560px, 100%)', maxHeight: '90vh',
-    background: '#1e293b', color: '#f1f5f9',
-    border: '1px solid #334155', borderRadius: 12,
+    width: 'min(560px, 100%)',
+    maxHeight: '90vh',
+    background: '#1e293b',
+    color: '#f1f5f9',
+    border: '1px solid #334155',
+    borderRadius: 12,
     boxShadow: '0 24px 64px rgba(0,0,0,0.45)',
-    display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
   },
   header: {
-    padding: '14px 18px', borderBottom: '1px solid #334155',
-    display: 'flex', alignItems: 'center', gap: 10,
+    padding: '14px 18px',
+    borderBottom: '1px solid #334155',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
   },
   brandDot: {
-    width: 8, height: 8, borderRadius: '50%',
-    background: '#4f46e5', boxShadow: '0 0 8px #818cf8',
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    background: '#4f46e5',
+    boxShadow: '0 0 8px #818cf8',
   },
   title: {
-    margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: 0.2,
-    color: '#f1f5f9', fontFamily: 'ui-monospace,monospace',
+    margin: 0,
+    fontSize: 14,
+    fontWeight: 700,
+    letterSpacing: 0.2,
+    color: '#f1f5f9',
+    fontFamily: 'ui-monospace,monospace',
   },
   headerHint: { marginLeft: 'auto', fontSize: 11, color: '#64748b' },
   body: { padding: 18, display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto' },
   label: {
-    fontSize: 11, fontWeight: 600, color: '#94a3b8',
-    letterSpacing: 0.4, textTransform: 'uppercase',
+    fontSize: 11,
+    fontWeight: 600,
+    color: '#94a3b8',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   textarea: {
-    width: '100%', minHeight: 180,
-    padding: '10px 12px', borderRadius: 8,
-    background: '#0f172a', color: '#e2e8f0',
-    border: '1px solid #334155', outline: 'none',
+    width: '100%',
+    minHeight: 180,
+    padding: '10px 12px',
+    borderRadius: 8,
+    background: '#0f172a',
+    color: '#e2e8f0',
+    border: '1px solid #334155',
+    outline: 'none',
     fontFamily: 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace',
-    fontSize: 12, lineHeight: 1.55, resize: 'vertical',
+    fontSize: 12,
+    lineHeight: 1.55,
+    resize: 'vertical',
     boxSizing: 'border-box',
   },
   fileRow: {
-    display: 'flex', alignItems: 'center', gap: 10,
-    padding: '10px 12px', borderRadius: 8,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 12px',
+    borderRadius: 8,
     background: 'rgba(79, 70, 229, 0.08)',
     border: '1px dashed rgba(79, 70, 229, 0.4)',
   },
   hiddenFile: { display: 'none' },
   fileBtn: {
-    padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
-    background: '#4f46e5', color: '#fff', border: 'none',
-    fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
+    padding: '6px 12px',
+    borderRadius: 6,
+    cursor: 'pointer',
+    background: '#4f46e5',
+    color: '#fff',
+    border: 'none',
+    fontSize: 11,
+    fontWeight: 600,
+    fontFamily: 'inherit',
     letterSpacing: 0.2,
   },
   fileName: {
-    fontSize: 11, color: '#cbd5e1', flex: 1,
-    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    fontSize: 11,
+    color: '#cbd5e1',
+    flex: 1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   status: { display: 'flex', alignItems: 'center', minHeight: 16 },
   error: { fontSize: 11, color: '#fca5a5', fontWeight: 500 },
   ok: { fontSize: 11, color: '#86efac', fontWeight: 500 },
   footer: {
-    padding: '12px 18px', borderTop: '1px solid #334155',
-    display: 'flex', justifyContent: 'flex-end', gap: 8,
+    padding: '12px 18px',
+    borderTop: '1px solid #334155',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 8,
     background: '#0f172a',
   },
   cancelBtn: {
-    padding: '6px 14px', borderRadius: 6, cursor: 'pointer',
-    background: 'transparent', color: '#cbd5e1',
+    padding: '6px 14px',
+    borderRadius: 6,
+    cursor: 'pointer',
+    background: 'transparent',
+    color: '#cbd5e1',
     border: '1px solid #334155',
-    fontSize: 12, fontWeight: 500, fontFamily: 'inherit',
+    fontSize: 12,
+    fontWeight: 500,
+    fontFamily: 'inherit',
   },
   submitBtn: {
-    padding: '6px 14px', borderRadius: 6, cursor: 'pointer',
-    background: '#4f46e5', color: '#fff', border: 'none',
-    fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+    padding: '6px 14px',
+    borderRadius: 6,
+    cursor: 'pointer',
+    background: '#4f46e5',
+    color: '#fff',
+    border: 'none',
+    fontSize: 12,
+    fontWeight: 600,
+    fontFamily: 'inherit',
     letterSpacing: 0.2,
   },
   submitBtnDisabled: { cursor: 'not-allowed', background: 'rgba(79,70,229,0.35)' },

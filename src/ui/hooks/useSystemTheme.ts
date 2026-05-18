@@ -27,9 +27,7 @@ export function useIsDark(theme: 'light' | 'dark' | 'auto'): boolean {
  */
 export function useIsCoarsePointer(): boolean {
   const [coarse, setCoarse] = useState<boolean>(() =>
-    typeof window !== 'undefined'
-      ? window.matchMedia('(pointer: coarse)').matches
-      : false,
+    typeof window !== 'undefined' ? window.matchMedia('(pointer: coarse)').matches : false,
   );
   useEffect(() => {
     if (typeof window === 'undefined') return;

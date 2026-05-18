@@ -35,6 +35,7 @@ export const MAX_IMPORT_LENGTH = 2 * 1024 * 1024;
 export function sanitizeLabel(raw: string): string {
   let s = raw;
   // Remove null bytes and ASCII control chars (except \n, \r, \t)
+  // eslint-disable-next-line no-control-regex
   s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   // Strip HTML/XML tags
   s = s.replace(/<\/?[a-zA-Z][^>]*>/g, '');

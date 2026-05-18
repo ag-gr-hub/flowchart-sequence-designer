@@ -9,11 +9,23 @@ export interface CtxMenuState {
 }
 
 export interface ContextMenuProps {
-  x: number; y: number; nodeId: string | null; edgeId?: string | null;
-  isDark: boolean; t: ThemeColors; acc: { color: string };
-  canUndo: boolean; canRedo: boolean;
-  onUndo(): void; onRedo(): void; onReCenter(): void; onAddNode(): void;
-  onDuplicate(): void; onRename(): void; onDelete(): void; onDisconnect(): void;
+  x: number;
+  y: number;
+  nodeId: string | null;
+  edgeId?: string | null;
+  isDark: boolean;
+  t: ThemeColors;
+  acc: { color: string };
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo(): void;
+  onRedo(): void;
+  onReCenter(): void;
+  onAddNode(): void;
+  onDuplicate(): void;
+  onRename(): void;
+  onDelete(): void;
+  onDisconnect(): void;
   onEdgeRename?(): void;
   onEdgeStyle?(style: 'solid' | 'dashed' | 'dotted'): void;
   onEdgeArrowhead?(arrow: 'arrow' | 'none'): void;
@@ -26,10 +38,32 @@ export interface ContextMenuProps {
 }
 
 export function ContextMenu({
-  x, y, nodeId, edgeId, isDark, t, acc, canUndo, canRedo,
-  onUndo, onRedo, onReCenter, onAddNode, onDuplicate, onRename, onDelete, onDisconnect,
-  onEdgeRename, onEdgeStyle, onEdgeArrowhead, onEdgeDelete, onEdgeResetRouting,
-  currentEdgeStyle, currentEdgeArrow, edgeHasWaypoint, containerRef,
+  x,
+  y,
+  nodeId,
+  edgeId,
+  isDark,
+  t,
+  acc,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  onReCenter,
+  onAddNode,
+  onDuplicate,
+  onRename,
+  onDelete,
+  onDisconnect,
+  onEdgeRename,
+  onEdgeStyle,
+  onEdgeArrowhead,
+  onEdgeDelete,
+  onEdgeResetRouting,
+  currentEdgeStyle,
+  currentEdgeArrow,
+  edgeHasWaypoint,
+  containerRef,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x, y });
@@ -38,7 +72,8 @@ export function ContextMenu({
     if (!menuRef.current || !containerRef.current) return;
     const m = menuRef.current.getBoundingClientRect();
     const c = containerRef.current.getBoundingClientRect();
-    let nx = x, ny = y;
+    let nx = x,
+      ny = y;
     if (nx + m.width > c.right - 8) nx = x - m.width;
     if (ny + m.height > c.bottom - 8) ny = y - m.height;
     setPos({ x: nx, y: ny });
@@ -51,21 +86,37 @@ export function ContextMenu({
   const text = t.textPrimary;
   const muted = t.textMuted;
 
-  const item = (label: string, onClick: () => void, color?: string, disabled?: boolean): React.ReactNode => (
+  const item = (
+    label: string,
+    onClick: () => void,
+    color?: string,
+    disabled?: boolean,
+  ): React.ReactNode => (
     <button
       key={label}
       onClick={disabled ? undefined : onClick}
       style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        width: '100%', padding: '7px 14px', background: 'none', border: 'none',
-        textAlign: 'left', cursor: disabled ? 'default' : 'pointer',
-        fontSize: 12, fontFamily: 'ui-sans-serif,system-ui,sans-serif',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        padding: '7px 14px',
+        background: 'none',
+        border: 'none',
+        textAlign: 'left',
+        cursor: disabled ? 'default' : 'pointer',
+        fontSize: 12,
+        fontFamily: 'ui-sans-serif,system-ui,sans-serif',
         color: disabled ? muted : (color ?? text),
         opacity: disabled ? 0.4 : 1,
         borderRadius: 6,
       }}
-      onMouseEnter={e => { if (!disabled) (e.currentTarget as HTMLElement).style.background = hoverBg; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
+      onMouseEnter={(e) => {
+        if (!disabled) (e.currentTarget as HTMLElement).style.background = hoverBg;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.background = 'none';
+      }}
     >
       {label}
     </button>
@@ -76,27 +127,74 @@ export function ContextMenu({
   return (
     <div
       ref={menuRef}
-      onMouseDown={e => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
       style={{
-        position: 'fixed', left: pos.x, top: pos.y, zIndex: 9999,
-        background: bg, border: `1px solid ${border}`,
-        borderRadius: 10, padding: '5px 0', minWidth: 180,
+        position: 'fixed',
+        left: pos.x,
+        top: pos.y,
+        zIndex: 9999,
+        background: bg,
+        border: `1px solid ${border}`,
+        borderRadius: 10,
+        padding: '5px 0',
+        minWidth: 180,
         boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.12)',
         fontFamily: 'ui-sans-serif,system-ui,sans-serif',
       }}
     >
       {edgeId ? (
         <>
-          <div style={{ padding: '4px 14px 6px', fontSize: 10, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Edge</div>
+          <div
+            style={{
+              padding: '4px 14px 6px',
+              fontSize: 10,
+              fontWeight: 700,
+              color: muted,
+              textTransform: 'uppercase',
+              letterSpacing: 0.8,
+            }}
+          >
+            Edge
+          </div>
           {item('Rename label (dbl-click)', () => onEdgeRename?.())}
           {divider}
-          <div style={{ padding: '4px 14px 2px', fontSize: 9, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Style</div>
-          {item(`Solid${currentEdgeStyle === 'solid' || !currentEdgeStyle ? ' ✓' : ''}`, () => onEdgeStyle?.('solid'))}
-          {item(`Dashed${currentEdgeStyle === 'dashed' ? ' ✓' : ''}`, () => onEdgeStyle?.('dashed'))}
-          {item(`Dotted${currentEdgeStyle === 'dotted' ? ' ✓' : ''}`, () => onEdgeStyle?.('dotted'))}
+          <div
+            style={{
+              padding: '4px 14px 2px',
+              fontSize: 9,
+              fontWeight: 700,
+              color: muted,
+              textTransform: 'uppercase',
+              letterSpacing: 0.8,
+            }}
+          >
+            Style
+          </div>
+          {item(`Solid${currentEdgeStyle === 'solid' || !currentEdgeStyle ? ' ✓' : ''}`, () =>
+            onEdgeStyle?.('solid'),
+          )}
+          {item(`Dashed${currentEdgeStyle === 'dashed' ? ' ✓' : ''}`, () =>
+            onEdgeStyle?.('dashed'),
+          )}
+          {item(`Dotted${currentEdgeStyle === 'dotted' ? ' ✓' : ''}`, () =>
+            onEdgeStyle?.('dotted'),
+          )}
           {divider}
-          <div style={{ padding: '4px 14px 2px', fontSize: 9, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Arrowhead</div>
-          {item(`Arrow${currentEdgeArrow !== 'none' ? ' ✓' : ''}`, () => onEdgeArrowhead?.('arrow'))}
+          <div
+            style={{
+              padding: '4px 14px 2px',
+              fontSize: 9,
+              fontWeight: 700,
+              color: muted,
+              textTransform: 'uppercase',
+              letterSpacing: 0.8,
+            }}
+          >
+            Arrowhead
+          </div>
+          {item(`Arrow${currentEdgeArrow !== 'none' ? ' ✓' : ''}`, () =>
+            onEdgeArrowhead?.('arrow'),
+          )}
           {item(`None${currentEdgeArrow === 'none' ? ' ✓' : ''}`, () => onEdgeArrowhead?.('none'))}
           {divider}
           {item('Reset routing', () => onEdgeResetRouting?.(), undefined, !edgeHasWaypoint)}
@@ -104,7 +202,18 @@ export function ContextMenu({
         </>
       ) : nodeId ? (
         <>
-          <div style={{ padding: '4px 14px 6px', fontSize: 10, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Node</div>
+          <div
+            style={{
+              padding: '4px 14px 6px',
+              fontSize: 10,
+              fontWeight: 700,
+              color: muted,
+              textTransform: 'uppercase',
+              letterSpacing: 0.8,
+            }}
+          >
+            Node
+          </div>
           {item('Rename (dbl-click)', onRename)}
           {item('Duplicate', onDuplicate)}
           {item('Disconnect all edges', onDisconnect)}
@@ -113,7 +222,18 @@ export function ContextMenu({
         </>
       ) : (
         <>
-          <div style={{ padding: '4px 14px 6px', fontSize: 10, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Canvas</div>
+          <div
+            style={{
+              padding: '4px 14px 6px',
+              fontSize: 10,
+              fontWeight: 700,
+              color: muted,
+              textTransform: 'uppercase',
+              letterSpacing: 0.8,
+            }}
+          >
+            Canvas
+          </div>
           {item('Add node here', onAddNode, acc.color)}
           {item('Re-center (Ctrl+0)', onReCenter)}
           {divider}

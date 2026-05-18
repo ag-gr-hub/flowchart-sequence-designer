@@ -72,14 +72,14 @@ describe('sanitizeURL', () => {
 describe('Mermaid importer XSS hardening', () => {
   it('sanitizes node labels containing script tags', () => {
     const model = fromMermaid('graph TD\n  A["<script>alert(1)</script>"] --> B[Safe]').toJSON();
-    const maliciousNode = model.nodes.find(n => n.id === 'A');
+    const maliciousNode = model.nodes.find((n) => n.id === 'A');
     expect(maliciousNode?.label).not.toContain('<script>');
     expect(maliciousNode?.label).not.toContain('</script>');
   });
 
   it('sanitizes node labels containing javascript: URIs', () => {
     const model = fromMermaid('graph TD\n  A["javascript:alert(1)"] --> B[OK]').toJSON();
-    const node = model.nodes.find(n => n.id === 'A');
+    const node = model.nodes.find((n) => n.id === 'A');
     expect(node?.label).not.toContain('javascript:');
   });
 

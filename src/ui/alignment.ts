@@ -13,14 +13,14 @@ export interface AlignBox {
 }
 
 export interface AlignGuideV {
-  pos: number;   // x position in canvas coords
-  minY: number;  // line extent (vertical guide)
+  pos: number; // x position in canvas coords
+  minY: number; // line extent (vertical guide)
   maxY: number;
 }
 
 export interface AlignGuideH {
-  pos: number;   // y position in canvas coords
-  minX: number;  // line extent (horizontal guide)
+  pos: number; // y position in canvas coords
+  minX: number; // line extent (horizontal guide)
   maxX: number;
 }
 

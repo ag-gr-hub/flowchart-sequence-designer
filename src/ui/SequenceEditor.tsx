@@ -28,14 +28,25 @@ const INDIGO_SOFT = '#eef2ff';
  * - `actorFill` / `actorStroke` / `actorText` — actor header box.
  */
 export interface SequenceThemeColors {
-  canvas: string; dot: string;
-  panelBg: string; panelBorder: string;
-  ctrlsBg: string; ctrlsBorder: string;
-  inputBg: string; inputBorder: string; inputText: string;
-  textPrimary: string; textSecondary: string; textMuted: string;
-  cardBg: string; cardBorder: string;
-  lifeline: string; arrow: string;
-  actorFill: string; actorStroke: string; actorText: string;
+  canvas: string;
+  dot: string;
+  panelBg: string;
+  panelBorder: string;
+  ctrlsBg: string;
+  ctrlsBorder: string;
+  inputBg: string;
+  inputBorder: string;
+  inputText: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  cardBg: string;
+  cardBorder: string;
+  lifeline: string;
+  arrow: string;
+  actorFill: string;
+  actorStroke: string;
+  actorText: string;
 }
 
 const lightTheme: SequenceThemeColors = {
@@ -82,11 +93,11 @@ const darkTheme: SequenceThemeColors = {
 };
 
 // Layout
-const HEADER_H = 64;       // height of actor box
-const HEADER_PAD = 24;     // top padding before headers start
-const COL_MIN = 160;       // min column width
-const ROW_H = 64;          // vertical spacing per message
-const SIDE_PAD = 40;       // left/right padding
+const HEADER_H = 64; // height of actor box
+const HEADER_PAD = 24; // top padding before headers start
+const COL_MIN = 160; // min column width
+const ROW_H = 64; // vertical spacing per message
+const SIDE_PAD = 40; // left/right padding
 
 /**
  * Props for `<SequenceEditor>`. Mirrors `DiagramEditorProps` minus the
@@ -121,10 +132,10 @@ export interface SequenceEditorProps {
 
 interface DragState {
   id: string;
-  startY: number;       // clientY at mousedown (page-space)
-  originalIdx: number;  // index in messages[] at drag start
-  targetIdx: number;    // current preview position
-  active: boolean;      // true once the cursor moves > DRAG_THRESHOLD
+  startY: number; // clientY at mousedown (page-space)
+  originalIdx: number; // index in messages[] at drag start
+  targetIdx: number; // current preview position
+  active: boolean; // true once the cursor moves > DRAG_THRESHOLD
 }
 const DRAG_THRESHOLD = 5;
 
@@ -148,8 +159,13 @@ function ensureSequenceModel(m?: DiagramModel): DiagramModel {
  * ```
  */
 export function SequenceEditor({
-  initialModel, onChange, onExport, height = 600,
-  allowedExports, allowImport = true, theme = 'auto',
+  initialModel,
+  onChange,
+  onExport,
+  height = 600,
+  allowedExports,
+  allowImport = true,
+  theme = 'auto',
   themeOverrides,
 }: SequenceEditorProps) {
   const [model, setModel] = useState<DiagramModel>(() => ensureSequenceModel(initialModel));
@@ -162,7 +178,10 @@ export function SequenceEditor({
   const historyIdxRef = useRef(0);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const { t, isDark } = useEditorTheme(theme, themeOverrides, { light: lightTheme, dark: darkTheme });
+  const { t, isDark } = useEditorTheme(theme, themeOverrides, {
+    light: lightTheme,
+    dark: darkTheme,
+  });
 
   const actors = model.actors ?? [];
   const messages = model.messages ?? [];
@@ -191,22 +210,29 @@ export function SequenceEditor({
     historyIdxRef.current = stack.length - 1;
   }, []);
 
-  const applyAndPush = useCallback((m: DiagramModel) => {
-    setModel(m); onChange?.(m); pushHistory(m);
-  }, [onChange, pushHistory]);
+  const applyAndPush = useCallback(
+    (m: DiagramModel) => {
+      setModel(m);
+      onChange?.(m);
+      pushHistory(m);
+    },
+    [onChange, pushHistory],
+  );
 
   const undo = useCallback(() => {
     if (historyIdxRef.current <= 0) return;
     historyIdxRef.current--;
     const m = historyRef.current[historyIdxRef.current]!;
-    setModel(m); onChange?.(m);
+    setModel(m);
+    onChange?.(m);
   }, [onChange]);
 
   const redo = useCallback(() => {
     if (historyIdxRef.current >= historyRef.current.length - 1) return;
     historyIdxRef.current++;
     const m = historyRef.current[historyIdxRef.current]!;
-    setModel(m); onChange?.(m);
+    setModel(m);
+    onChange?.(m);
   }, [onChange]);
 
   const addActor = () => {
@@ -218,8 +244,8 @@ export function SequenceEditor({
     if (!newName || newName === oldName || actors.includes(newName)) return;
     applyAndPush({
       ...model,
-      actors: actors.map(a => a === oldName ? newName : a),
-      messages: messages.map(m => ({
+      actors: actors.map((a) => (a === oldName ? newName : a)),
+      messages: messages.map((m) => ({
         ...m,
         from: m.from === oldName ? newName : m.from,
         to: m.to === oldName ? newName : m.to,
@@ -230,8 +256,8 @@ export function SequenceEditor({
   const removeActor = (name: string) => {
     applyAndPush({
       ...model,
-      actors: actors.filter(a => a !== name),
-      messages: messages.filter(m => m.from !== name && m.to !== name),
+      actors: actors.filter((a) => a !== name),
+      messages: messages.filter((m) => m.from !== name && m.to !== name),
     });
   };
 
@@ -243,7 +269,10 @@ export function SequenceEditor({
       applyAndPush({
         ...model,
         actors: [...actors, a, b],
-        messages: [...messages, { id: nextId('m', messages), from: a, to: b, label: 'message', style: 'solid' }],
+        messages: [
+          ...messages,
+          { id: nextId('m', messages), from: a, to: b, label: 'message', style: 'solid' },
+        ],
       });
       return;
     }
@@ -251,42 +280,75 @@ export function SequenceEditor({
     const to = actors[Math.min(1, actors.length - 1)] ?? from;
     applyAndPush({
       ...model,
-      messages: [...messages, { id: nextId('m', messages), from, to, label: 'message', style: 'solid' as const }],
+      messages: [
+        ...messages,
+        { id: nextId('m', messages), from, to, label: 'message', style: 'solid' as const },
+      ],
     });
   };
 
   const updateMessage = (id: string, patch: Partial<SequenceMessage>) => {
     applyAndPush({
       ...model,
-      messages: messages.map(m => m.id === id ? { ...m, ...patch } : m),
+      messages: messages.map((m) => (m.id === id ? { ...m, ...patch } : m)),
     });
   };
 
   const removeMessage = (id: string) => {
-    applyAndPush({ ...model, messages: messages.filter(m => m.id !== id) });
+    applyAndPush({ ...model, messages: messages.filter((m) => m.id !== id) });
     if (selected === id) setSelected(null);
   };
 
-  const reorderMessage = useCallback((id: string, toIdx: number) => {
-    const fromIdx = messages.findIndex(m => m.id === id);
-    if (fromIdx < 0 || toIdx === fromIdx) return;
-    const next = messages.slice();
-    const [moved] = next.splice(fromIdx, 1);
-    next.splice(toIdx, 0, moved!);
-    applyAndPush({ ...model, messages: next });
-  }, [messages, model, applyAndPush]);
+  const reorderMessage = useCallback(
+    (id: string, toIdx: number) => {
+      const fromIdx = messages.findIndex((m) => m.id === id);
+      if (fromIdx < 0 || toIdx === fromIdx) return;
+      const next = messages.slice();
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved!);
+      applyAndPush({ ...model, messages: next });
+    },
+    [messages, model, applyAndPush],
+  );
 
   // ── Keyboard ────────────────────────────────────────────────────────────
   const keyCommands: KeyCommand[] = [
-    { match: e => (e.ctrlKey || e.metaKey) && e.key === 'z', run: () => { undo(); return true; } },
-    { match: e => (e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z')), run: () => { redo(); return true; } },
-    { match: e => e.key === 'Escape', run: () => { setSelected(null); setEditingId(null); return true; } },
-    { match: e => (e.key === 'Delete' || e.key === 'Backspace') && !!selected, run: () => { removeMessage(selected!); return true; } },
+    {
+      match: (e) => (e.ctrlKey || e.metaKey) && e.key === 'z',
+      run: () => {
+        undo();
+        return true;
+      },
+    },
+    {
+      match: (e) => (e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z')),
+      run: () => {
+        redo();
+        return true;
+      },
+    },
+    {
+      match: (e) => e.key === 'Escape',
+      run: () => {
+        setSelected(null);
+        setEditingId(null);
+        return true;
+      },
+    },
+    {
+      match: (e) => (e.key === 'Delete' || e.key === 'Backspace') && !!selected,
+      run: () => {
+        removeMessage(selected!);
+        return true;
+      },
+    },
   ];
   useEditorKeyboard(keyCommands, [undo, redo, selected]);
 
   // ── Export / import ─────────────────────────────────────────────────────
-  const handleExport = useExporters(model, onExport, 'sequence', (msg) => showToast(msg, 'success'));
+  const handleExport = useExporters(model, onExport, 'sequence', (msg) =>
+    showToast(msg, 'success'),
+  );
   const handleImport = useImporter(applyAndPush, {
     expectedType: 'sequence',
     transform: ensureSequenceModel,
@@ -302,7 +364,7 @@ export function SequenceEditor({
   const onRowMouseDown = (e: React.MouseEvent, id: string) => {
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'SELECT') return;
-    const idx = messages.findIndex(m => m.id === id);
+    const idx = messages.findIndex((m) => m.id === id);
     if (idx < 0) return;
     e.preventDefault();
     setSelected(id);
@@ -339,14 +401,21 @@ export function SequenceEditor({
   }, [drag, messages.length, reorderMessage]);
 
   // ── Render ──────────────────────────────────────────────────────────────
-  const selectedMsg = selected ? messages.find(m => m.id === selected) : null;
+  const selectedMsg = selected ? messages.find((m) => m.id === selected) : null;
 
   return (
-   <div className="fsd-seq-editor" style={{
-      display: 'flex', flexDirection: 'column', height, width: '100%',
-      fontFamily: 'ui-sans-serif,system-ui,sans-serif', background: t.ctrlsBg,
-      position: 'relative',
-    }}>
+    <div
+      className="fsd-seq-editor"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height,
+        width: '100%',
+        fontFamily: 'ui-sans-serif,system-ui,sans-serif',
+        background: t.ctrlsBg,
+        position: 'relative',
+      }}
+    >
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <style>{`
         .fsd-seq-editor [role="button"]:focus-visible {
@@ -360,21 +429,41 @@ export function SequenceEditor({
           border-radius: 4px;
         }
       `}</style>
-      <Toolbar onExport={handleExport} onImport={allowImport ? handleImport : undefined} allowedExports={allowedExports} allowImport={allowImport} />
+      <Toolbar
+        onExport={handleExport}
+        onImport={allowImport ? handleImport : undefined}
+        allowedExports={allowedExports}
+        allowImport={allowImport}
+      />
 
       {/* Controls */}
-      <div style={{
-        display: 'flex', gap: 8, padding: '7px 14px',
-        background: t.ctrlsBg, borderBottom: `1px solid ${t.ctrlsBorder}`,
-        alignItems: 'center', flexWrap: 'wrap',
-      }}>
-        <button onClick={addActor} style={primaryBtn()}>+ Actor</button>
-        <button onClick={addMessage} style={primaryBtn()}>+ Message</button>
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          padding: '7px 14px',
+          background: t.ctrlsBg,
+          borderBottom: `1px solid ${t.ctrlsBorder}`,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+        <button onClick={addActor} style={primaryBtn()}>
+          + Actor
+        </button>
+        <button onClick={addMessage} style={primaryBtn()}>
+          + Message
+        </button>
         <div style={{ width: 1, height: 18, background: t.ctrlsBorder, margin: '0 4px' }} />
-        <button onClick={undo} style={ghostBtn(t)} title="Undo (Ctrl+Z)">↶</button>
-        <button onClick={redo} style={ghostBtn(t)} title="Redo (Ctrl+Y)">↷</button>
+        <button onClick={undo} style={ghostBtn(t)} title="Undo (Ctrl+Z)">
+          ↶
+        </button>
+        <button onClick={redo} style={ghostBtn(t)} title="Redo (Ctrl+Y)">
+          ↷
+        </button>
         <span style={{ marginLeft: 'auto', fontSize: 11, color: t.textMuted }}>
-          {actors.length} actor{actors.length === 1 ? '' : 's'} · {messages.length} message{messages.length === 1 ? '' : 's'} · drag a row to reorder
+          {actors.length} actor{actors.length === 1 ? '' : 's'} · {messages.length} message
+          {messages.length === 1 ? '' : 's'} · drag a row to reorder
         </span>
       </div>
 
@@ -382,58 +471,118 @@ export function SequenceEditor({
         {/* Canvas */}
         <div style={{ flex: 1, overflow: 'auto', background: t.canvas, position: 'relative' }}>
           <SequenceCanvas
-            model={model} actors={actors} messages={messages}
-            t={t} isDark={isDark}
-            colW={colW} totalW={totalW} totalH={totalH}
-            actorX={actorX} msgY={msgY}
-            selected={selected} editingId={editingId} setEditingId={setEditingId}
-            drag={drag} onRowMouseDown={onRowMouseDown}
-            renameActor={renameActor} removeActor={removeActor}
+            model={model}
+            actors={actors}
+            messages={messages}
+            t={t}
+            isDark={isDark}
+            colW={colW}
+            totalW={totalW}
+            totalH={totalH}
+            actorX={actorX}
+            msgY={msgY}
+            selected={selected}
+            editingId={editingId}
+            setEditingId={setEditingId}
+            drag={drag}
+            onRowMouseDown={onRowMouseDown}
+            renameActor={renameActor}
+            removeActor={removeActor}
             svgRef={svgRef}
           />
         </div>
 
         {/* Side panel */}
         {selectedMsg && (
-          <div style={{
-            width: 280, maxWidth: '40vw', flexShrink: 0,
-            background: t.panelBg, borderLeft: `1px solid ${t.panelBorder}`,
-            padding: '14px 16px', overflowY: 'auto',
-          }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>Message</div>
+          <div
+            style={{
+              width: 280,
+              maxWidth: '40vw',
+              flexShrink: 0,
+              background: t.panelBg,
+              borderLeft: `1px solid ${t.panelBorder}`,
+              padding: '14px 16px',
+              overflowY: 'auto',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: t.textMuted,
+                textTransform: 'uppercase',
+                letterSpacing: 0.7,
+                marginBottom: 10,
+              }}
+            >
+              Message
+            </div>
 
             <Label t={t}>Label</Label>
             <input
               value={editLabel || selectedMsg.label}
               onChange={(e) => setEditLabel(e.target.value)}
               onFocus={() => setEditLabel(selectedMsg.label)}
-              onBlur={() => { if (editLabel && editLabel !== selectedMsg.label) updateMessage(selectedMsg.id, { label: editLabel }); setEditLabel(''); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+              onBlur={() => {
+                if (editLabel && editLabel !== selectedMsg.label)
+                  updateMessage(selectedMsg.id, { label: editLabel });
+                setEditLabel('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+              }}
               style={input(t)}
             />
 
             <Label t={t}>From</Label>
-            <select value={selectedMsg.from} onChange={(e) => updateMessage(selectedMsg.id, { from: e.target.value })} style={input(t)}>
-              {actors.map(a => <option key={a} value={a}>{a}</option>)}
+            <select
+              value={selectedMsg.from}
+              onChange={(e) => updateMessage(selectedMsg.id, { from: e.target.value })}
+              style={input(t)}
+            >
+              {actors.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
             </select>
 
             <Label t={t}>To</Label>
-            <select value={selectedMsg.to} onChange={(e) => updateMessage(selectedMsg.id, { to: e.target.value })} style={input(t)}>
-              {actors.map(a => <option key={a} value={a}>{a}</option>)}
+            <select
+              value={selectedMsg.to}
+              onChange={(e) => updateMessage(selectedMsg.id, { to: e.target.value })}
+              style={input(t)}
+            >
+              {actors.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
             </select>
 
             <Label t={t}>Style</Label>
             <div style={{ display: 'flex', gap: 6 }}>
-              {(['solid', 'dashed'] as const).map(s => (
+              {(['solid', 'dashed'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => updateMessage(selectedMsg.id, { style: s })}
                   style={{
-                    flex: 1, padding: '6px 10px',
+                    flex: 1,
+                    padding: '6px 10px',
                     border: `1.5px solid ${selectedMsg.style === s || (!selectedMsg.style && s === 'solid') ? INDIGO : t.inputBorder}`,
-                    background: selectedMsg.style === s || (!selectedMsg.style && s === 'solid') ? INDIGO_SOFT : t.inputBg,
-                    color: selectedMsg.style === s || (!selectedMsg.style && s === 'solid') ? INDIGO : t.textPrimary,
-                    borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    background:
+                      selectedMsg.style === s || (!selectedMsg.style && s === 'solid')
+                        ? INDIGO_SOFT
+                        : t.inputBg,
+                    color:
+                      selectedMsg.style === s || (!selectedMsg.style && s === 'solid')
+                        ? INDIGO
+                        : t.textPrimary,
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
                   }}
                 >
                   {s === 'solid' ? '── solid' : '─ ─ dashed'}
@@ -444,52 +593,95 @@ export function SequenceEditor({
             <div style={{ height: 14 }} />
             <button
               onClick={() => removeMessage(selectedMsg.id)}
-              style={{ ...ghostBtn(t), width: '100%', color: '#ef4444', border: `1px solid ${isDark ? '#7f1d1d' : '#fca5a5'}` }}
-            >Delete message</button>
+              style={{
+                ...ghostBtn(t),
+                width: '100%',
+                color: '#ef4444',
+                border: `1px solid ${isDark ? '#7f1d1d' : '#fca5a5'}`,
+              }}
+            >
+              Delete message
+            </button>
           </div>
         )}
       </div>
 
-      <div style={{
-        padding: '4px 14px', fontSize: 11, color: t.textMuted, background: t.canvas,
-        borderTop: `1px solid ${t.ctrlsBorder}`, display: 'flex', gap: 16,
-      }}>
+      <div
+        style={{
+          padding: '4px 14px',
+          fontSize: 11,
+          color: t.textMuted,
+          background: t.canvas,
+          borderTop: `1px solid ${t.ctrlsBorder}`,
+          display: 'flex',
+          gap: 16,
+        }}
+      >
         <span>{actors.length} actors</span>
         <span>{messages.length} messages</span>
-        <span style={{ marginLeft: 'auto' }}>double-click actor to rename · drag a row to reorder</span>
+        <span style={{ marginLeft: 'auto' }}>
+          double-click actor to rename · drag a row to reorder
+        </span>
       </div>
     </div>
   );
 }
 
-
 function primaryBtn(): React.CSSProperties {
   return {
-    padding: '6px 12px', background: INDIGO, color: '#fff', border: 'none',
-    borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+    padding: '6px 12px',
+    background: INDIGO,
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontSize: 12,
+    fontWeight: 600,
+    fontFamily: 'inherit',
   };
 }
 function ghostBtn(t: typeof lightTheme): React.CSSProperties {
   return {
-    padding: '5px 10px', background: 'transparent', color: t.textSecondary,
-    border: `1px solid ${t.ctrlsBorder}`, borderRadius: 7, cursor: 'pointer',
-    fontSize: 12, fontWeight: 500, fontFamily: 'inherit',
+    padding: '5px 10px',
+    background: 'transparent',
+    color: t.textSecondary,
+    border: `1px solid ${t.ctrlsBorder}`,
+    borderRadius: 7,
+    cursor: 'pointer',
+    fontSize: 12,
+    fontWeight: 500,
+    fontFamily: 'inherit',
   };
 }
 function input(t: typeof lightTheme): React.CSSProperties {
   return {
-    width: '100%', boxSizing: 'border-box', padding: '6px 10px',
-    border: `1.5px solid ${t.inputBorder}`, borderRadius: 7,
-    background: t.inputBg, color: t.inputText, fontSize: 12,
-    fontFamily: 'inherit', outline: 'none', marginBottom: 12,
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '6px 10px',
+    border: `1.5px solid ${t.inputBorder}`,
+    borderRadius: 7,
+    background: t.inputBg,
+    color: t.inputText,
+    fontSize: 12,
+    fontFamily: 'inherit',
+    outline: 'none',
+    marginBottom: 12,
   };
 }
 
 function Label({ t, children }: { t: typeof lightTheme; children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: 10, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>
+    <div
+      style={{
+        fontSize: 10,
+        fontWeight: 700,
+        color: t.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: 0.6,
+        marginBottom: 4,
+      }}
+    >
       {children}
     </div>
   );
 }
-

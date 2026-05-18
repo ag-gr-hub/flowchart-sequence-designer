@@ -45,7 +45,14 @@ export function useCanvasTouch(
     if (!el) return;
 
     let touchPan: { ox: number; oy: number; tx: number; ty: number } | null = null;
-    let pinch: { dist: number; cx: number; cy: number; scale: number; tx: number; ty: number } | null = null;
+    let pinch: {
+      dist: number;
+      cx: number;
+      cy: number;
+      scale: number;
+      tx: number;
+      ty: number;
+    } | null = null;
     let longPressTimer: ReturnType<typeof setTimeout> | null = null;
     let longPressStart: { x: number; y: number } | null = null;
     let longPressFired = false;
@@ -151,5 +158,16 @@ export function useCanvasTouch(
       el.removeEventListener('touchend', onEnd);
       el.removeEventListener('touchcancel', onEnd);
     };
-  }, [ref, transform.scale, transform.x, transform.y, setTransform, onLongPress, minScale, maxScale, longPressMs, longPressSlop]);
+  }, [
+    ref,
+    transform.scale,
+    transform.x,
+    transform.y,
+    setTransform,
+    onLongPress,
+    minScale,
+    maxScale,
+    longPressMs,
+    longPressSlop,
+  ]);
 }

@@ -68,11 +68,15 @@ describe('layout helpers', () => {
 
     it('sums answer card widths plus padding', () => {
       const withOne = questionNodeW({
-        id: 'q', label: 'q', shape: 'rectangle',
+        id: 'q',
+        label: 'q',
+        shape: 'rectangle',
         metadata: { answers: ['Yes'] },
       });
       const withThree = questionNodeW({
-        id: 'q', label: 'q', shape: 'rectangle',
+        id: 'q',
+        label: 'q',
+        shape: 'rectangle',
         metadata: { answers: ['Yes', 'No', 'Maybe'] },
       });
       expect(withThree).toBeGreaterThan(withOne);

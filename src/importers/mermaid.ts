@@ -1,7 +1,14 @@
 import { Model } from '../core/model.js';
 import type { NodeShape } from '../core/types.js';
 import { nextId } from '../core/ids.js';
-import { sanitizeLabel, MAX_NODES, MAX_EDGES, MAX_ACTORS, MAX_MESSAGES, MAX_IMPORT_LENGTH } from '../core/sanitize.js';
+import {
+  sanitizeLabel,
+  MAX_NODES,
+  MAX_EDGES,
+  MAX_ACTORS,
+  MAX_MESSAGES,
+  MAX_IMPORT_LENGTH,
+} from '../core/sanitize.js';
 
 // Detects shape from Mermaid node syntax
 function parseNodeDecl(raw: string): { id: string; label: string; shape: NodeShape } | null {
@@ -40,7 +47,8 @@ function parseFlowchart(lines: string[]): Model {
 
   const ensureNode = (id: string, group?: string) => {
     if (!nodeMap.has(id)) {
-      if (nodeMap.size >= MAX_NODES) throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_NODES} nodes`);
+      if (nodeMap.size >= MAX_NODES)
+        throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_NODES} nodes`);
       nodeMap.set(id, true);
       const metadata = group ? { group } : undefined;
       model.addNode({ id, label: id, shape: 'rectangle', ...(metadata ? { metadata } : {}) });
@@ -60,12 +68,19 @@ function parseFlowchart(lines: string[]): Model {
       trimmed.startsWith('class ') ||
       trimmed.startsWith('style ') ||
       trimmed.startsWith('linkStyle ')
-    ) continue;
+    )
+      continue;
 
     // Subgraphs: track current group so contained nodes get metadata.group set.
     const subgraphOpen = trimmed.match(/^subgraph\s+(\S+)/i);
-    if (subgraphOpen) { groupStack.push(subgraphOpen[1]!); continue; }
-    if (/^end\b/i.test(trimmed)) { groupStack.pop(); continue; }
+    if (subgraphOpen) {
+      groupStack.push(subgraphOpen[1]!);
+      continue;
+    }
+    if (/^end\b/i.test(trimmed)) {
+      groupStack.pop();
+      continue;
+    }
 
     const currentGroup = groupStack[groupStack.length - 1];
 
@@ -83,7 +98,8 @@ function parseFlowchart(lines: string[]): Model {
       const toNode = parseNodeDecl(toRaw);
 
       if (fromNode && !nodeMap.has(fromNode.id)) {
-        if (nodeMap.size >= MAX_NODES) throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_NODES} nodes`);
+        if (nodeMap.size >= MAX_NODES)
+          throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_NODES} nodes`);
         nodeMap.set(fromNode.id, true);
         const metadata = currentGroup ? { group: currentGroup } : undefined;
         model.addNode({ ...fromNode, ...(metadata ? { metadata } : {}) });
@@ -91,7 +107,8 @@ function parseFlowchart(lines: string[]): Model {
         ensureNode(fromRaw.replace(/\W.*/, ''), currentGroup);
       }
       if (toNode && !nodeMap.has(toNode.id)) {
-        if (nodeMap.size >= MAX_NODES) throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_NODES} nodes`);
+        if (nodeMap.size >= MAX_NODES)
+          throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_NODES} nodes`);
         nodeMap.set(toNode.id, true);
         const metadata = currentGroup ? { group: currentGroup } : undefined;
         model.addNode({ ...toNode, ...(metadata ? { metadata } : {}) });
@@ -99,13 +116,15 @@ function parseFlowchart(lines: string[]): Model {
         ensureNode(toRaw.replace(/\W.*/, ''), currentGroup);
       }
 
-      if (edgeCount >= MAX_EDGES) throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_EDGES} edges`);
+      if (edgeCount >= MAX_EDGES)
+        throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_EDGES} edges`);
       edgeCount++;
       const fromId = fromNode?.id ?? fromRaw.replace(/\W.*/, '');
       const toId = toNode?.id ?? toRaw.replace(/\W.*/, '');
       model.addEdge({
         id: nextId('e', model.toJSON().edges),
-        from: fromId, to: toId,
+        from: fromId,
+        to: toId,
         ...(sanitizedLabel ? { label: sanitizedLabel } : {}),
         style,
         ...(arrowhead === 'none' ? { arrowhead } : {}),
@@ -115,7 +134,8 @@ function parseFlowchart(lines: string[]): Model {
 
     const nodeDecl = parseNodeDecl(trimmed);
     if (nodeDecl && !nodeMap.has(nodeDecl.id)) {
-      if (nodeMap.size >= MAX_NODES) throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_NODES} nodes`);
+      if (nodeMap.size >= MAX_NODES)
+        throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_NODES} nodes`);
       nodeMap.set(nodeDecl.id, true);
       const metadata = currentGroup ? { group: currentGroup } : undefined;
       model.addNode({ ...nodeDecl, ...(metadata ? { metadata } : {}) });
@@ -133,7 +153,8 @@ function parseSequence(lines: string[], title?: string): Model {
   const safeAddActor = (name: string) => {
     const safeName = sanitizeLabel(name);
     if (!model.toJSON().actors?.includes(safeName)) {
-      if (actorCount >= MAX_ACTORS) throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_ACTORS} actors`);
+      if (actorCount >= MAX_ACTORS)
+        throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_ACTORS} actors`);
       actorCount++;
     }
     model.addActor(safeName);
@@ -163,10 +184,17 @@ function parseSequence(lines: string[], title?: string): Model {
       const arrow = msgMatch[2]!;
       const to = safeAddActor(msgMatch[3]!.trim());
       const label = sanitizeLabel(msgMatch[4]!.trim());
-      if (messageCount >= MAX_MESSAGES) throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_MESSAGES} messages`);
+      if (messageCount >= MAX_MESSAGES)
+        throw new Error(`Import aborted: diagram exceeds the maximum of ${MAX_MESSAGES} messages`);
       messageCount++;
       const messages = model.toJSON().messages ?? [];
-      model.addMessage({ id: nextId('m', messages), from, to, label, style: arrow.startsWith('--') ? 'dashed' : 'solid' });
+      model.addMessage({
+        id: nextId('m', messages),
+        from,
+        to,
+        label,
+        style: arrow.startsWith('--') ? 'dashed' : 'solid',
+      });
     }
   }
 
@@ -216,7 +244,7 @@ export function fromMermaid(mermaid: string): Model {
   }
 
   const lines = rawLines.slice(startIdx);
-  const firstContent = lines.find(l => l.trim());
+  const firstContent = lines.find((l) => l.trim());
 
   if (firstContent?.trim().startsWith('sequenceDiagram')) {
     const m = parseSequence(lines, title);

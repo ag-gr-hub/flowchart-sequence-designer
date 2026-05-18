@@ -22,11 +22,17 @@ const containerStyle: React.CSSProperties = {
  * Renders a stack of auto-dismissing toast notifications.
  * Position this inside a `position: relative` container.
  */
-export function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
+export function ToastContainer({
+  toasts,
+  onDismiss,
+}: {
+  toasts: Toast[];
+  onDismiss: (id: number) => void;
+}) {
   if (toasts.length === 0) return null;
   return (
     <div style={containerStyle}>
-      {toasts.map(t => {
+      {toasts.map((t) => {
         const c = TOAST_COLORS[t.type];
         return (
           <div

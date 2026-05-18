@@ -28,8 +28,10 @@ function questionNodeW(node: DiagramNode): number {
   const answers = (node.metadata?.answers as string[] | undefined) ?? [];
   const headerW = estimateTextW(node.label, 8) + 80;
   if (answers.length === 0) return Math.max(MIN_Q_W, Math.ceil(headerW));
-  const cardsW = answers.reduce((s, a) => s + answerCardW(a), 0)
-    + (answers.length - 1) * Q_CARD_PAD + 2 * Q_CARD_PAD;
+  const cardsW =
+    answers.reduce((s, a) => s + answerCardW(a), 0) +
+    (answers.length - 1) * Q_CARD_PAD +
+    2 * Q_CARD_PAD;
   return Math.max(MIN_Q_W, Math.ceil(Math.max(headerW, cardsW)));
 }
 
@@ -46,7 +48,12 @@ function bezierPath(x1: number, y1: number, x2: number, y2: number): string {
   return `M ${x1} ${y1} C ${x1} ${y1 + curve}, ${x2} ${y2 - curve}, ${x2} ${y2}`;
 }
 
-interface LayoutBox { x: number; y: number; w: number; h: number }
+interface LayoutBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 function isQuestion(node: DiagramNode, variant: DiagramModel['variant']): boolean {
   return variant === 'question' && !!node.metadata?.answers;
@@ -55,7 +62,7 @@ function isQuestion(node: DiagramNode, variant: DiagramModel['variant']): boolea
 /** Honor x/y on nodes if present; otherwise BFS-layer fallback. */
 function computeLayout(model: DiagramModel): Map<string, LayoutBox> {
   const boxes = new Map<string, LayoutBox>();
-  const sized = model.nodes.map(n => {
+  const sized = model.nodes.map((n) => {
     const w = isQuestion(n, model.variant) ? questionNodeW(n) : nodeWidth(n.label);
     const h = isQuestion(n, model.variant)
       ? questionNodeH((n.metadata?.answers as string[] | undefined) ?? [])
@@ -63,7 +70,9 @@ function computeLayout(model: DiagramModel): Map<string, LayoutBox> {
     return { node: n, w, h };
   });
 
-  const allPositioned = sized.every(s => typeof s.node.x === 'number' && typeof s.node.y === 'number');
+  const allPositioned = sized.every(
+    (s) => typeof s.node.x === 'number' && typeof s.node.y === 'number',
+  );
   if (allPositioned) {
     for (const s of sized) {
       boxes.set(s.node.id, { x: s.node.x as number, y: s.node.y as number, w: s.w, h: s.h });
@@ -72,11 +81,11 @@ function computeLayout(model: DiagramModel): Map<string, LayoutBox> {
   }
 
   // BFS-layer fallback for un-positioned graphs (e.g. fresh imports).
-  const inDeg = new Map(model.nodes.map(n => [n.id, 0]));
+  const inDeg = new Map(model.nodes.map((n) => [n.id, 0]));
   for (const e of model.edges) inDeg.set(e.to, (inDeg.get(e.to) ?? 0) + 1);
 
   const layers = new Map<string, number>();
-  const queue = model.nodes.filter(n => (inDeg.get(n.id) ?? 0) === 0).map(n => n.id);
+  const queue = model.nodes.filter((n) => (inDeg.get(n.id) ?? 0) === 0).map((n) => n.id);
   for (const id of queue) layers.set(id, 0);
   let head = 0;
   while (head < queue.length) {
@@ -92,7 +101,9 @@ function computeLayout(model: DiagramModel): Map<string, LayoutBox> {
       }
     }
   }
-  model.nodes.forEach(n => { if (!layers.has(n.id)) layers.set(n.id, 0); });
+  model.nodes.forEach((n) => {
+    if (!layers.has(n.id)) layers.set(n.id, 0);
+  });
 
   const byLayer = new Map<number, typeof sized>();
   for (const s of sized) {
@@ -117,7 +128,12 @@ function computeLayout(model: DiagramModel): Map<string, LayoutBox> {
 }
 
 function escapeXML(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
@@ -134,6 +150,7 @@ function sanitizeForSVG(s: string): string {
   // Strip on* event handlers
   clean = clean.replace(/\bon[a-z]+\s*=/gi, '');
   // Strip null bytes
+  // eslint-disable-next-line no-control-regex
   clean = clean.replace(/\x00/g, '');
   return escapeXML(clean);
 }
@@ -159,7 +176,7 @@ function renderStandardNode(node: DiagramNode, box: LayoutBox): string {
   const shape = node.shape ?? 'rectangle';
   const label = `<text x="${cx}" y="${cy + 4.5}" text-anchor="middle" font-family="ui-sans-serif,system-ui,-apple-system,sans-serif" font-size="13" font-weight="500" fill="${COLORS.text}">${sanitizeForSVG(node.label)}</text>`;
 
-  let shapeEl = '';
+  let shapeEl: string;
   if (shape === 'diamond') {
     const pts = `${cx},${box.y} ${box.x + box.w},${cy} ${cx},${box.y + box.h} ${box.x},${cy}`;
     shapeEl = `<polygon points="${pts}" fill="${COLORS.nodeFill}" stroke="${COLORS.nodeStroke}" stroke-width="1.25" filter="url(#nodeShadow)"/>`;
@@ -178,32 +195,55 @@ function renderStandardNode(node: DiagramNode, box: LayoutBox): string {
 function renderQuestionNode(node: DiagramNode, box: LayoutBox): string {
   const answers = (node.metadata?.answers as string[] | undefined) ?? [];
   const clipId = `qhdr-${node.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-  const x = box.x, y = box.y, w = box.w, h = box.h;
+  const x = box.x,
+    y = box.y,
+    w = box.w,
+    h = box.h;
   const parts: string[] = [];
 
   // Card body
-  parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${COLORS.nodeFill}" stroke="${COLORS.amberLine}" stroke-width="1.5" filter="url(#nodeShadow)"/>`);
+  parts.push(
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${COLORS.nodeFill}" stroke="${COLORS.amberLine}" stroke-width="1.5" filter="url(#nodeShadow)"/>`,
+  );
 
   // Header tint (clipped to top rounded corners)
-  parts.push(`<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${w}" height="${Q_BASE_H}" rx="14"/></clipPath></defs>`);
-  parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${Q_BASE_H}" fill="${COLORS.amberSoft}" clip-path="url(#${clipId})"/>`);
+  parts.push(
+    `<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${w}" height="${Q_BASE_H}" rx="14"/></clipPath></defs>`,
+  );
+  parts.push(
+    `<rect x="${x}" y="${y}" width="${w}" height="${Q_BASE_H}" fill="${COLORS.amberSoft}" clip-path="url(#${clipId})"/>`,
+  );
 
   // Amber left accent
-  parts.push(`<rect x="${x}" y="${y}" width="4" height="${Q_BASE_H}" rx="2" fill="${COLORS.amber}"/>`);
+  parts.push(
+    `<rect x="${x}" y="${y}" width="4" height="${Q_BASE_H}" rx="2" fill="${COLORS.amber}"/>`,
+  );
 
   // ? badge
-  parts.push(`<rect x="${x + 12}" y="${y + 14}" width="28" height="28" rx="8" fill="${COLORS.amber}"/>`);
-  parts.push(`<text x="${x + 26}" y="${y + 33}" text-anchor="middle" font-size="15" font-weight="900" fill="white">?</text>`);
+  parts.push(
+    `<rect x="${x + 12}" y="${y + 14}" width="28" height="28" rx="8" fill="${COLORS.amber}"/>`,
+  );
+  parts.push(
+    `<text x="${x + 26}" y="${y + 33}" text-anchor="middle" font-size="15" font-weight="900" fill="white">?</text>`,
+  );
 
   // QUESTION label + node label
-  parts.push(`<text x="${x + 50}" y="${y + 27}" font-family="ui-sans-serif,system-ui,sans-serif" font-size="9" font-weight="700" fill="${COLORS.textSub}" letter-spacing="0.6">QUESTION</text>`);
-  parts.push(`<text x="${x + 50}" y="${y + 42}" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700" fill="${COLORS.text}">${sanitizeForSVG(node.label)}</text>`);
+  parts.push(
+    `<text x="${x + 50}" y="${y + 27}" font-family="ui-sans-serif,system-ui,sans-serif" font-size="9" font-weight="700" fill="${COLORS.textSub}" letter-spacing="0.6">QUESTION</text>`,
+  );
+  parts.push(
+    `<text x="${x + 50}" y="${y + 42}" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700" fill="${COLORS.text}">${sanitizeForSVG(node.label)}</text>`,
+  );
 
   // Divider
-  parts.push(`<line x1="${x}" y1="${y + Q_BASE_H}" x2="${x + w}" y2="${y + Q_BASE_H}" stroke="${COLORS.amberLine}" stroke-width="1"/>`);
+  parts.push(
+    `<line x1="${x}" y1="${y + Q_BASE_H}" x2="${x + w}" y2="${y + Q_BASE_H}" stroke="${COLORS.amberLine}" stroke-width="1"/>`,
+  );
 
   if (answers.length === 0) {
-    parts.push(`<text x="${x + w / 2}" y="${y + Q_BASE_H + 22}" text-anchor="middle" font-size="10" fill="${COLORS.amber}" opacity="0.4" font-weight="600">No answers yet</text>`);
+    parts.push(
+      `<text x="${x + w / 2}" y="${y + Q_BASE_H + 22}" text-anchor="middle" font-size="10" fill="${COLORS.amber}" opacity="0.4" font-weight="600">No answers yet</text>`,
+    );
   } else {
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     answers.forEach((ans, i) => {
@@ -217,23 +257,36 @@ function renderQuestionNode(node: DiagramNode, box: LayoutBox): string {
       const maxChars = Math.max(2, Math.floor((cW - 20) / 7.5));
       const displayAns = ans.length > maxChars ? ans.slice(0, maxChars - 1) + '…' : ans;
 
-      parts.push(`<rect x="${cardX}" y="${cardY}" width="${cW}" height="${cardH}" rx="8" fill="${COLORS.amberCardBg}" stroke="${COLORS.amberLine}" stroke-width="1"/>`);
-      parts.push(`<rect x="${cx - 11}" y="${cardY + 7}" width="22" height="22" rx="6" fill="#fef3c7"/>`);
-      parts.push(`<text x="${cx}" y="${cardY + 22}" text-anchor="middle" font-size="10" font-weight="800" fill="${COLORS.amber}">${sanitizeForSVG(letter)}</text>`);
-      parts.push(`<text x="${cx}" y="${cardY + 46}" text-anchor="middle" font-size="11" font-weight="500" fill="#374151" font-family="ui-sans-serif,system-ui,sans-serif">${sanitizeForSVG(displayAns)}</text>`);
+      parts.push(
+        `<rect x="${cardX}" y="${cardY}" width="${cW}" height="${cardH}" rx="8" fill="${COLORS.amberCardBg}" stroke="${COLORS.amberLine}" stroke-width="1"/>`,
+      );
+      parts.push(
+        `<rect x="${cx - 11}" y="${cardY + 7}" width="22" height="22" rx="6" fill="#fef3c7"/>`,
+      );
+      parts.push(
+        `<text x="${cx}" y="${cardY + 22}" text-anchor="middle" font-size="10" font-weight="800" fill="${COLORS.amber}">${sanitizeForSVG(letter)}</text>`,
+      );
+      parts.push(
+        `<text x="${cx}" y="${cardY + 46}" text-anchor="middle" font-size="11" font-weight="500" fill="#374151" font-family="ui-sans-serif,system-ui,sans-serif">${sanitizeForSVG(displayAns)}</text>`,
+      );
     });
   }
 
   return parts.join('');
 }
 
-function renderEdge(edge: DiagramEdge, boxes: Map<string, LayoutBox>, variant: DiagramModel['variant'], nodes: DiagramNode[]): string {
+function renderEdge(
+  edge: DiagramEdge,
+  boxes: Map<string, LayoutBox>,
+  variant: DiagramModel['variant'],
+  nodes: DiagramNode[],
+): string {
   const fromBox = boxes.get(edge.from);
   const toBox = boxes.get(edge.to);
   if (!fromBox || !toBox) return '';
 
   let x1: number, y1: number;
-  const fromNode = nodes.find(n => n.id === edge.from);
+  const fromNode = nodes.find((n) => n.id === edge.from);
 
   if (fromNode && isQuestion(fromNode, variant)) {
     const answers = (fromNode.metadata?.answers as string[] | undefined) ?? [];
@@ -254,8 +307,12 @@ function renderEdge(edge: DiagramEdge, boxes: Map<string, LayoutBox>, variant: D
   const x2 = toBox.x + toBox.w / 2;
   const y2 = toBox.y;
 
-  const dash = edge.style === 'dashed' ? ' stroke-dasharray="6,4"'
-    : edge.style === 'dotted' ? ' stroke-dasharray="2,3"' : '';
+  const dash =
+    edge.style === 'dashed'
+      ? ' stroke-dasharray="6,4"'
+      : edge.style === 'dotted'
+        ? ' stroke-dasharray="2,3"'
+        : '';
   const marker = edge.arrowhead === 'none' ? '' : ' marker-end="url(#arrow)"';
   const d = bezierPath(x1, y1, x2, y2);
 
@@ -285,7 +342,8 @@ function renderEdge(edge: DiagramEdge, boxes: Map<string, LayoutBox>, variant: D
  */
 export function toSVG(model: DiagramModel): string {
   const boxes = computeLayout(model);
-  let maxX = 0, maxY = 0;
+  let maxX = 0,
+    maxY = 0;
   for (const b of boxes.values()) {
     maxX = Math.max(maxX, b.x + b.w);
     maxY = Math.max(maxY, b.y + b.h);
@@ -311,11 +369,13 @@ export function toSVG(model: DiagramModel): string {
     ? `<text x="${width / 2}" y="22" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" font-weight="700" fill="${COLORS.text}">${sanitizeForSVG(model.title)}</text>`
     : '';
 
-  const edges = model.edges.map(e => renderEdge(e, boxes, model.variant, model.nodes)).join('\n');
-  const nodes = model.nodes.map(n => {
-    const b = boxes.get(n.id)!;
-    return isQuestion(n, model.variant) ? renderQuestionNode(n, b) : renderStandardNode(n, b);
-  }).join('\n');
+  const edges = model.edges.map((e) => renderEdge(e, boxes, model.variant, model.nodes)).join('\n');
+  const nodes = model.nodes
+    .map((n) => {
+      const b = boxes.get(n.id)!;
+      return isQuestion(n, model.variant) ? renderQuestionNode(n, b) : renderStandardNode(n, b);
+    })
+    .join('\n');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n${defs}\n<rect width="${width}" height="${height}" fill="${COLORS.bg}"/>\n<rect width="${width}" height="${height}" fill="url(#dotgrid)"/>\n${titleEl}\n${edges}\n${nodes}\n</svg>`;
 }
@@ -331,7 +391,9 @@ export function toSVG(model: DiagramModel): string {
  */
 export async function toPNG(model: DiagramModel): Promise<Blob> {
   if (typeof document === 'undefined') {
-    throw new Error('toPNG requires a browser environment. For Node/Bun server use, pipe toSVG() through @resvg/resvg-js.');
+    throw new Error(
+      'toPNG requires a browser environment. For Node/Bun server use, pipe toSVG() through @resvg/resvg-js.',
+    );
   }
   const svg = toSVG(model);
   const blob = new Blob([svg], { type: 'image/svg+xml' });
@@ -348,9 +410,15 @@ export async function toPNG(model: DiagramModel): Promise<Blob> {
       ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas toBlob failed')), 'image/png');
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('Canvas toBlob failed'))),
+        'image/png',
+      );
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('SVG image load failed')); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('SVG image load failed'));
+    };
     img.src = url;
   });
 }
