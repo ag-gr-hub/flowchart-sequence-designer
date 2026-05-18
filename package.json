@@ -72,7 +72,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "bun-types": "latest",
-    "react": "^18",
+    "react": "^19",
     "react-dom": "^18",
     "tsup": "^8",
     "typescript": "^5"
