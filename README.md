@@ -390,6 +390,14 @@ import { SequenceEditor, presetSequenceModel } from 'flowchart-sequence-designer
 
 ---
 
+## Framework Wrappers
+
+| Framework | Package | Docs |
+|-----------|---------|------|
+| Angular | [`@flowchart-sequence-designer/angular`](https://www.npmjs.com/package/@flowchart-sequence-designer/angular) | [Docs & Demo](https://ag-gr-hub.github.io/flowchart-sequence-designer-angular/) |
+
+---
+
 ## Types
 
 ### Core entry (`flowchart-sequence-designer`)
