@@ -91,6 +91,25 @@ export function DocsPage() {
 
       {/* Main content */}
       <main style={{ flex: 1, overflowY: 'auto', padding: '40px 56px 80px' }}>
+        {/* Supported Frameworks */}
+        <div style={{ marginBottom: 32, padding: '16px 20px', background: '#0d1421', border: '1px solid #1e293b', borderRadius: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
+            Supported Frameworks
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <a href="https://ag-gr-hub.github.io/flowchart-sequence-designer/"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: '#4f46e520', border: '1px solid #4f46e5', borderRadius: 8, color: '#a5b4fc', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" opacity="0"/><path d="M12 21.5c1.1 0 3.24-2.03 4.17-5.5H7.83c.93 3.47 3.07 5.5 4.17 5.5M7.83 8C6.93 11.47 6.93 12.53 7.83 16h8.34c.9-3.47.9-4.53 0-8H7.83z" opacity="0"/><ellipse cx="12" cy="12" rx="11" ry="4.2" fill="none" stroke="currentColor" strokeWidth="1"/><ellipse cx="12" cy="12" rx="11" ry="4.2" fill="none" stroke="currentColor" strokeWidth="1" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="11" ry="4.2" fill="none" stroke="currentColor" strokeWidth="1" transform="rotate(120 12 12)"/></svg>
+              React (current)
+            </a>
+            <a href="https://ag-gr-hub.github.io/flowchart-sequence-designer-angular/"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: '#1e293b', border: '1px solid #334155', borderRadius: 8, color: '#94a3b8', fontSize: 12, fontWeight: 500, textDecoration: 'none' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l1.63 14.27L12 22l8.37-3.73L22 7L12 2zm0 2.21l6.9 3.33-.98 8.56L12 19.77l-5.92-3.67-.98-8.56L12 4.21z"/></svg>
+              Angular
+            </a>
+          </div>
+        </div>
+
         {/* Hero */}
         <div style={{ marginBottom: 48 }}>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: '#f8fafc', margin: '0 0 10px' }}>
