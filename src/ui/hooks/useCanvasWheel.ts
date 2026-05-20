@@ -12,7 +12,7 @@ interface Transform {
  * the page scroll on the canvas.
  */
 export function useCanvasWheel(
-  ref: RefObject<SVGSVGElement>,
+  ref: RefObject<SVGSVGElement | null>,
   setTransform: (updater: (t: Transform) => Transform) => void,
   options: { min?: number; max?: number; factor?: number } = {},
 ): void {

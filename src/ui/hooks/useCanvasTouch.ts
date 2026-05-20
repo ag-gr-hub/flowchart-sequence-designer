@@ -29,7 +29,7 @@ interface UseCanvasTouchOptions {
  * immediately.
  */
 export function useCanvasTouch(
-  ref: RefObject<SVGSVGElement>,
+  ref: RefObject<SVGSVGElement | null>,
   {
     transform,
     setTransform,
