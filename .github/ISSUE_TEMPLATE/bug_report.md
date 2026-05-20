@@ -1,36 +1,30 @@
 ---
-name: Bug report
-about: Report something that isn't working as documented
-title: '[Bug] '
+name: Bug Report
+about: Report a bug to help us improve
+title: "[Bug] "
 labels: bug
+assignees: ''
 ---
 
-## What happened
+**Describe the bug**
+A clear and concise description of what the bug is.
 
-<!-- A clear description of the bug. -->
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '...'
+3. See error
 
-## Expected behavior
+**Expected behavior**
+What you expected to happen.
 
-<!-- What you thought would happen. -->
+**Screenshots**
+If applicable, add screenshots.
 
-## Minimal reproduction
+**Environment:**
+- Browser: [e.g. Chrome 120]
+- OS: [e.g. macOS 14]
+- Package version: [e.g. 1.2.3]
 
-<!-- A runnable snippet, CodeSandbox link, or test case. The smaller the better. -->
-
-```ts
-// e.g.
-import { flowchart } from 'flowchart-sequence-designer';
-const m = flowchart('test').node('a', 'A').node('b', 'B').edge('a', 'b');
-console.log(m.toMermaid()); // → unexpected output
-```
-
-## Environment
-
-- Package version: `0.1.0`
-- Runtime: Bun / Node / browser (which?)
-- OS:
-- Browser (if UI-related):
-
-## Additional context
-
-<!-- Screenshots, related issues, anything else useful. -->
+**Additional context**
+Any other relevant information.
