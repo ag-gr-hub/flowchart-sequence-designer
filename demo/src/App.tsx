@@ -25,13 +25,14 @@ export default function App() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       {/* Top nav */}
-      <div style={{
+      <div className="topnav" role="tablist" style={{
         display: 'flex', gap: 0, background: '#0f172a',
         padding: '0 16px', alignItems: 'stretch', flexShrink: 0,
         borderBottom: '1px solid #1e293b',
         overflowX: 'auto', overflowY: 'hidden',
       }}>
         <a
+          className="brand"
           href="https://github.com/ag-gr-hub/flowchart-sequence-designer"
           target="_blank"
           rel="noreferrer"
@@ -52,6 +53,10 @@ export default function App() {
         {VARIANTS.map(v => (
           <button
             key={v.key}
+            className="tab-btn"
+            type="button"
+            role="tab"
+            aria-selected={tab === v.key}
             onClick={() => setTab(v.key)}
             style={{
               padding: '10px 18px', background: 'none', border: 'none',
@@ -63,12 +68,16 @@ export default function App() {
             }}
           >
             <span>{v.label}</span>
-            <span style={{ fontSize: 10, opacity: 0.6, whiteSpace: 'nowrap' }}>{v.description}</span>
+            <span className="tab-desc" style={{ fontSize: 10, opacity: 0.6, whiteSpace: 'nowrap' }}>{v.description}</span>
           </button>
         ))}
 
         {/* Docs tab */}
         <button
+          className="tab-btn"
+          type="button"
+          role="tab"
+          aria-selected={tab === 'docs'}
           onClick={() => setTab('docs')}
           style={{
             padding: '10px 18px', background: 'none', border: 'none',
@@ -80,13 +89,14 @@ export default function App() {
           }}
         >
           <span>For Developers</span>
-          <span style={{ fontSize: 10, opacity: 0.6, whiteSpace: 'nowrap' }}>API & programmatic usage</span>
+          <span className="tab-desc" style={{ fontSize: 10, opacity: 0.6, whiteSpace: 'nowrap' }}>API & programmatic usage</span>
         </button>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
           {tab !== 'docs' && (['light', 'auto', 'dark'] as Theme[]).map(t => (
             <button
               key={t}
+              type="button"
               onClick={() => setTheme(t)}
               style={{
                 padding: '4px 10px',

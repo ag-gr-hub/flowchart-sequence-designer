@@ -42,7 +42,7 @@ export function DocsPage() {
       fontFamily: 'ui-sans-serif,system-ui,sans-serif',
     }}>
       {/* Sidebar nav */}
-      <nav style={{
+      <nav className="docs-sidebar" aria-label="Documentation" style={{
         width: 220, flexShrink: 0, borderRight: '1px solid #1e293b',
         overflowY: 'auto', padding: '28px 0',
         background: '#0d1421',
@@ -90,7 +90,7 @@ export function DocsPage() {
       </nav>
 
       {/* Main content */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: '40px 56px 80px' }}>
+      <main className="docs-content" style={{ flex: 1, overflowY: 'auto', padding: '40px 56px 80px' }}>
         {/* Supported Frameworks */}
         <div style={{ marginBottom: 32, padding: '16px 20px', background: '#0d1421', border: '1px solid #1e293b', borderRadius: 10 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
