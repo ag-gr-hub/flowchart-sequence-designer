@@ -1,0 +1,35 @@
+@media (max-width: 768px) {
+  .topnav {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+  .topnav .brand {
+    width: 100%;
+    border-right: none !important;
+    border-bottom: 1px solid #1e293b;
+    padding: 8px 16px !important;
+    margin-right: 0 !important;
+  }
+  .topnav .tab-btn .tab-desc {
+    display: none;
+  }
+  .docs-sidebar {
+    display: none;
+  }
+  .docs-content {
+    padding: 20px 16px 60px !important;
+  }
+}
+@media (max-width: 480px) {
+  .topnav .tab-btn {
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+  }
+}
+
+/* Focus styles */
+button:focus-visible, a:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
