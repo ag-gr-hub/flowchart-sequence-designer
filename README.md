@@ -9,6 +9,19 @@ A TypeScript-first Bun/npm package for building and editing flowchart and sequen
 **🔗 [Live demo & developer docs →](https://ag-gr-hub.github.io/flowchart-sequence-designer/)**
 Open it to drive the editor, switch variants (Flowchart / Question / Journey / Sequence), and copy the same API snippets shown below straight from the docs tab. Every variant boots with a working sample diagram so you can poke without any setup.
 
+## Contents
+
+- [Quick start](#quick-start)
+- [Install](#install)
+- [Programmatic API](#programmatic-api)
+- [React UI component](#react-ui-component)
+- [Framework Wrappers](#framework-wrappers)
+- [Types](#types)
+- [Package structure](#package-structure)
+- [Security](#security)
+- [Troubleshooting](#troubleshooting)
+- [Building from source](#building-from-source)
+
 ## Quick start
 
 ```tsx
@@ -552,6 +565,38 @@ This package takes security seriously:
 - **Dependabot** — Dependency updates monitored weekly.
 
 To report a vulnerability, see [SECURITY.md](./SECURITY.md).
+
+---
+
+## Troubleshooting
+
+**`toPNG` throws in Node / Bun server context**
+
+`toPNG` requires the browser Canvas API. Use `toSVG` on the server and pipe the output through [`@resvg/resvg-js`](https://github.com/nicolo-ribaudo/resvg-js):
+
+```ts
+import { toSVG } from 'flowchart-sequence-designer';
+import { Resvg } from '@resvg/resvg-js';
+
+const svg = toSVG(model);
+const png = new Resvg(svg).render().asPng();
+```
+
+**Peer dependency warning for React**
+
+The package lists `react >= 17` as a peer dependency. If your project uses React 18 or 19 you may see a warning — it is safe to ignore. All features are tested against React 19.
+
+**Canvas renders blank / empty**
+
+Ensure the `height` prop is set to a numeric value (`height={600}`) rather than `"100%"`. A percentage height requires the parent element to have an explicit height, which browsers often don't enforce in flex containers.
+
+**Large diagrams feel sluggish**
+
+The canvas is SVG-based and renders every node each frame during drag. For diagrams with more than ~200 nodes, consider reducing the number of simultaneously visible nodes or splitting the diagram into sections. Node dimensions are memoized per render cycle, so layout recalculations are batched.
+
+**Mermaid import drops some features**
+
+Mermaid import is intentionally lossy — it preserves shapes, edge styles, labels, titles, and subgraph grouping, but drops canvas positions, waypoints, per-edge metadata, and the diagram variant (`question`, `journey`). These fields have no Mermaid syntax equivalent. Use JSON export/import for a full lossless round-trip.
 
 ---
 
