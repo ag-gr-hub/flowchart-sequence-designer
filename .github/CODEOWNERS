@@ -1,0 +1,8 @@
+# Global owner for all paths
+* @ag-gr-hub
+
+# Critical core paths — require owner review on any change
+src/core/ @ag-gr-hub
+src/exporters/ @ag-gr-hub
+src/importers/ @ag-gr-hub
+.github/ @ag-gr-hub
