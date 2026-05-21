@@ -10,9 +10,7 @@ import { ToastContainer } from './ToastContainer.js';
 import { presetSequenceModel } from './presets.js';
 import { nextId } from '../core/ids.js';
 import { useEditorKeyboard, type KeyCommand } from './hooks/useEditorKeyboard.js';
-
-const INDIGO = '#4f46e5';
-const INDIGO_SOFT = '#eef2ff';
+import { ACCENT } from './theme.js';
 
 /**
  * Color palette for `<SequenceEditor>`. Sequence diagrams use a smaller
@@ -569,14 +567,14 @@ export function SequenceEditor({
                   style={{
                     flex: 1,
                     padding: '6px 10px',
-                    border: `1.5px solid ${selectedMsg.style === s || (!selectedMsg.style && s === 'solid') ? INDIGO : t.inputBorder}`,
+                    border: `1.5px solid ${selectedMsg.style === s || (!selectedMsg.style && s === 'solid') ? ACCENT.indigo : t.inputBorder}`,
                     background:
                       selectedMsg.style === s || (!selectedMsg.style && s === 'solid')
-                        ? INDIGO_SOFT
+                        ? ACCENT.indigoLight
                         : t.inputBg,
                     color:
                       selectedMsg.style === s || (!selectedMsg.style && s === 'solid')
-                        ? INDIGO
+                        ? ACCENT.indigo
                         : t.textPrimary,
                     borderRadius: 8,
                     fontSize: 12,
@@ -630,7 +628,7 @@ export function SequenceEditor({
 function primaryBtn(): React.CSSProperties {
   return {
     padding: '6px 12px',
-    background: INDIGO,
+    background: ACCENT.indigo,
     color: '#fff',
     border: 'none',
     borderRadius: 8,
