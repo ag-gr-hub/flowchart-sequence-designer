@@ -60,6 +60,27 @@ export class SequenceBuilder {
     return this.message(from, to, label, { style: 'dashed' });
   }
 
+  /** Remove a message by id. Safe to call on a missing id (no-op). */
+  removeMessage(id: string): this {
+    this.model.removeMessage(id);
+    return this;
+  }
+
+  /**
+   * Remove an actor and all messages that involve them.
+   * Safe to call on an unknown actor name (no-op).
+   */
+  removeActor(name: string): this {
+    this.model.removeActor(name);
+    return this;
+  }
+
+  /** Patch an existing message in place. Throws if the id is not found. */
+  updateMessage(id: string, patch: Partial<Omit<SequenceMessage, 'id'>>): this {
+    this.model.updateMessage(id, patch);
+    return this;
+  }
+
   /** Return the underlying `Model` for advanced operations or validation. */
   getModel(): Model {
     return this.model;

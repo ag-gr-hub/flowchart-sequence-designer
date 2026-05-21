@@ -169,13 +169,69 @@ export class Model {
   }
 
   /**
-   * Append a sequence message. The actors referenced by `from`/`to` are not
-   * validated here — callers are expected to register them via `addActor()`
-   * first.
+   * Append a sequence message. Throws if either `from` or `to` actor has not
+   * been registered via `addActor()`.
    */
   addMessage(message: SequenceMessage): this {
+    const actors = this.data.actors ?? [];
+    if (!actors.includes(message.from)) {
+      throw new Error(
+        `Message "${message.id}" references unknown actor "${message.from}". Call addActor() first.`,
+      );
+    }
+    if (!actors.includes(message.to)) {
+      throw new Error(
+        `Message "${message.id}" references unknown actor "${message.to}". Call addActor() first.`,
+      );
+    }
     this.data.messages!.push({ ...message });
     return this;
+  }
+
+  /**
+   * Patch an existing message in place. Throws if the id is not found.
+   */
+  updateMessage(id: string, patch: Partial<Omit<SequenceMessage, 'id'>>): this {
+    const msg = this.data.messages!.find((m) => m.id === id);
+    if (!msg) throw new Error(`Message "${id}" not found`);
+    const { __proto__, constructor, ...safe } = patch as Record<string, unknown>;
+    Object.assign(msg, safe);
+    return this;
+  }
+
+  /**
+   * Remove a message by id. Safe to call on a missing id (no-op).
+   */
+  removeMessage(id: string): this {
+    this.data.messages = (this.data.messages ?? []).filter((m) => m.id !== id);
+    return this;
+  }
+
+  /**
+   * Remove an actor and all messages that involve them as `from` or `to`.
+   * Safe to call on an unknown actor name (no-op).
+   */
+  removeActor(name: string): this {
+    this.data.actors = (this.data.actors ?? []).filter((a) => a !== name);
+    this.data.messages = (this.data.messages ?? []).filter(
+      (m) => m.from !== name && m.to !== name,
+    );
+    return this;
+  }
+
+  /**
+   * Return a deep-cloned `Model` instance. Useful for snapshotting before
+   * a destructive mutation without going through `toJSON()` + `fromData()`.
+   *
+   * @example
+   * ```ts
+   * const snapshot = model.clone();
+   * model.removeNode('n1');
+   * // snapshot is unaffected
+   * ```
+   */
+  clone(): Model {
+    return Model.fromData(this.data);
   }
 
   /**
