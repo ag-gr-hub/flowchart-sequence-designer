@@ -141,7 +141,7 @@ export interface DiagramCanvasProps {
  * and context menu. Extracted from `DiagramEditor` so the orchestrator
  * focuses on state + handlers while this component owns rendering.
  */
-export function DiagramCanvas(props: DiagramCanvasProps) {
+function DiagramCanvasBase(props: DiagramCanvasProps) {
   const {
     model,
     variant,
@@ -589,3 +589,4 @@ export function DiagramCanvas(props: DiagramCanvasProps) {
     </div>
   );
 }
+export const DiagramCanvas = React.memo(DiagramCanvasBase);

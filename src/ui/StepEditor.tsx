@@ -32,7 +32,7 @@ const SHAPES: { key: NodeShape; label: string; icon: string }[] = [
   { key: 'parallelogram', label: 'I/O', icon: '▱' },
 ];
 
-export function StepEditor({
+function StepEditorBase({
   nodeId,
   model,
   onModelChange,
@@ -791,3 +791,4 @@ export function StepEditor({
     </div>
   );
 }
+export const StepEditor = React.memo(StepEditorBase);

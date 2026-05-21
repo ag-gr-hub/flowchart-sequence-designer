@@ -37,7 +37,7 @@ export interface ContextMenuProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
-export function ContextMenu({
+function ContextMenuBase({
   x,
   y,
   nodeId,
@@ -244,3 +244,4 @@ export function ContextMenu({
     </div>
   );
 }
+export const ContextMenu = React.memo(ContextMenuBase);

@@ -62,7 +62,7 @@ function estimateW(text: string, pxPerChar = 7): number {
  * actor headers, and the dot-grid background. Extracted from
  * `SequenceEditor` so the orchestrator focuses on state + handlers.
  */
-export function SequenceCanvas(props: SequenceCanvasProps) {
+function SequenceCanvasBase(props: SequenceCanvasProps) {
   const {
     model: _model,
     actors,
@@ -378,3 +378,4 @@ export function SequenceCanvas(props: SequenceCanvasProps) {
     </svg>
   );
 }
+export const SequenceCanvas = React.memo(SequenceCanvasBase);

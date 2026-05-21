@@ -11,7 +11,7 @@ export interface ImportDialogProps {
  * file picker (.json / .mmd / .mermaid / .txt). Auto-detects format from
  * the body: leading `{` → JSON, otherwise Mermaid.
  */
-export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
+function ImportDialogBase({ open, onClose, onImport }: ImportDialogProps) {
   const [text, setText] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -316,3 +316,4 @@ const s = {
   },
   submitBtnDisabled: { cursor: 'not-allowed', background: 'rgba(79,70,229,0.35)' },
 } satisfies Record<string, React.CSSProperties>;
+export const ImportDialog = React.memo(ImportDialogBase);
