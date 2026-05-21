@@ -14,7 +14,7 @@ export interface NodeNavigatorProps {
   onSelect(nodeId: string): void;
 }
 
-export function NodeNavigator({
+function NodeNavigatorBase({
   model,
   selected,
   variant,
@@ -303,3 +303,4 @@ export function NodeNavigator({
     </div>
   );
 }
+export const NodeNavigator = React.memo(NodeNavigatorBase);

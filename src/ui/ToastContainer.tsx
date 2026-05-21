@@ -22,7 +22,7 @@ const containerStyle: React.CSSProperties = {
  * Renders a stack of auto-dismissing toast notifications.
  * Position this inside a `position: relative` container.
  */
-export function ToastContainer({
+function ToastContainerBase({
   toasts,
   onDismiss,
 }: {
@@ -64,3 +64,4 @@ export function ToastContainer({
     </div>
   );
 }
+export const ToastContainer = React.memo(ToastContainerBase);

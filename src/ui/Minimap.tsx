@@ -28,7 +28,7 @@ export interface MinimapProps {
   accentColor: string;
 }
 
-export function Minimap({
+function MinimapBase({
   model,
   viewportW,
   viewportH,
@@ -176,3 +176,4 @@ export function Minimap({
     </div>
   );
 }
+export const Minimap = React.memo(MinimapBase);

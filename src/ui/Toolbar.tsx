@@ -18,7 +18,7 @@ interface ToolbarProps {
   allowImport?: boolean;
 }
 
-export function Toolbar({ onExport, onImport, allowedExports, allowImport = true }: ToolbarProps) {
+function ToolbarBase({ onExport, onImport, allowedExports, allowImport = true }: ToolbarProps) {
   const [importOpen, setImportOpen] = useState(false);
   const formats = allowedExports
     ? ALL_FORMATS.filter((f) => allowedExports.includes(f.key))
@@ -125,3 +125,4 @@ const exportBtn: React.CSSProperties = {
   fontFamily: 'ui-monospace,monospace',
   letterSpacing: 0.3,
 };
+export const Toolbar = React.memo(ToolbarBase);

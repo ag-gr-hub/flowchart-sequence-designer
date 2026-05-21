@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Toolbar } from './Toolbar.js';
 import { StepEditor } from './StepEditor.js';
 import { SequenceEditor } from './SequenceEditor.js';
@@ -222,6 +222,13 @@ function FlowchartEditor({
   const isCoarse = useIsCoarsePointer();
   const portR = isCoarse ? 9 : 6;
 
+  // Pre-compute node dimensions once per render rather than inside each loop.
+  const nodeDimsMap = useMemo(() => {
+    const map = new Map<string, { w: number; h: number }>();
+    for (const n of model.nodes) map.set(n.id, nodeDims(n, model.variant ?? 'flowchart'));
+    return map;
+  }, [model.nodes, model.variant]);
+
   // Track the SVG element size for the minimap viewport overlay.
   const viewport = useElementSize(svgRef);
 
@@ -241,7 +248,7 @@ function FlowchartEditor({
     for (const n of model.nodes) {
       const nx = n.x ?? 0,
         ny = n.y ?? 0;
-      const { w: nw, h: nh } = nodeDims(n, variant);
+      const { w: nw, h: nh } = nodeDimsMap.get(n.id) ?? nodeDims(n, variant);
       minX = Math.min(minX, nx);
       minY = Math.min(minY, ny);
       maxX = Math.max(maxX, nx + nw);
@@ -261,7 +268,7 @@ function FlowchartEditor({
       const node = model.nodes.find((n) => n.id === nodeId);
       if (!node || !svgRef.current) return;
       const rect = svgRef.current.getBoundingClientRect();
-      const { w: nw, h: nh } = nodeDims(node, variant);
+      const { w: nw, h: nh } = nodeDimsMap.get(node.id) ?? nodeDims(node, variant);
       const cx = (node.x ?? 0) + nw / 2;
       const cy = (node.y ?? 0) + nh / 2;
       const scale = Math.min(Math.max(transform.scale, 0.8), 1.4);
@@ -453,13 +460,13 @@ function FlowchartEditor({
                 : ('down' as const);
         const origin = model.nodes.find((n) => n.id === selected);
         if (!origin) return false;
-        const od = nodeDims(origin, variant);
+        const od = nodeDimsMap.get(origin.id) ?? nodeDims(origin, variant);
         const ox = (origin.x ?? 0) + od.w / 2;
         const oy = (origin.y ?? 0) + od.h / 2;
         const candidates = model.nodes
           .filter((n) => n.id !== selected)
           .map((n) => {
-            const d = nodeDims(n, variant);
+            const d = nodeDimsMap.get(n.id) ?? nodeDims(n, variant);
             return { id: n.id, x: (n.x ?? 0) + d.w / 2, y: (n.y ?? 0) + d.h / 2 };
           });
         const nextNodeId = nearestInDirection(ox, oy, dirKey, candidates);
@@ -711,11 +718,11 @@ function FlowchartEditor({
       } else {
         const dragged = model.nodes.find((n) => n.id === drag.nodeId);
         if (!dragged) return;
-        const { w: dW, h: dH } = nodeDims(dragged, variant);
+        const { w: dW, h: dH } = nodeDimsMap.get(dragged.id) ?? nodeDims(dragged, variant);
         const others = model.nodes
           .filter((n) => n.id !== drag.nodeId)
           .map((n) => {
-            const d = nodeDims(n, variant);
+            const d = nodeDimsMap.get(n.id) ?? nodeDims(n, variant);
             return { x: n.x ?? 0, y: n.y ?? 0, w: d.w, h: d.h };
           });
         const snapResult = findSiblingSnap({ x: dx, y: dy, w: dW, h: dH }, others);
@@ -761,7 +768,7 @@ function FlowchartEditor({
         for (const n of model.nodes) {
           const nx = n.x ?? 0,
             ny = n.y ?? 0;
-          const { w: nw, h: nh } = nodeDims(n, variant);
+          const { w: nw, h: nh } = nodeDimsMap.get(n.id) ?? nodeDims(n, variant);
           if (nx + nw >= cx1 && nx <= cx2 && ny + nh >= cy1 && ny <= cy2) hits.add(n.id);
         }
         const arr = Array.from(hits);
