@@ -162,8 +162,26 @@ function sanitizeForSVG(s: string): string {
   return escapeXML(clean);
 }
 
+/**
+ * Color overrides for `toSVG()` and `toPNG()`. All fields optional; any
+ * omitted field falls back to the default light-theme palette.
+ */
+export type SvgExportColors = {
+  bg?: string;
+  dot?: string;
+  nodeFill?: string;
+  nodeStroke?: string;
+  edge?: string;
+  text?: string;
+  textSub?: string;
+  amber?: string;
+  amberSoft?: string;
+  amberLine?: string;
+  amberCardBg?: string;
+};
+
 // Match canvas: indigo/slate palette, light theme by default.
-const COLORS = {
+const DEFAULT_COLORS: Required<SvgExportColors> = {
   bg: '#fafbfc',
   dot: '#dbe3ee',
   nodeFill: '#ffffff',
@@ -176,6 +194,7 @@ const COLORS = {
   amberLine: '#fde68a',
   amberCardBg: '#fffdf7',
 };
+let COLORS = DEFAULT_COLORS;
 
 function renderStandardNode(node: DiagramNode, box: LayoutBox): string {
   const cx = box.x + box.w / 2;
@@ -347,7 +366,8 @@ function renderEdge(
  *
  * Works in Node, Bun, and the browser (no DOM APIs needed).
  */
-export function toSVG(model: DiagramModel): string {
+export function toSVG(model: DiagramModel, theme?: SvgExportColors): string {
+  COLORS = theme ? { ...DEFAULT_COLORS, ...theme } : DEFAULT_COLORS;
   const boxes = computeLayout(model);
   let maxX = 0,
     maxY = 0;
@@ -396,13 +416,13 @@ export function toSVG(model: DiagramModel): string {
  * API is not available). For server-side PNG rendering, pipe `toSVG()` output
  * through a library like `@resvg/resvg-js`.
  */
-export async function toPNG(model: DiagramModel): Promise<Blob> {
+export async function toPNG(model: DiagramModel, theme?: SvgExportColors): Promise<Blob> {
   if (typeof document === 'undefined') {
     throw new Error(
       'toPNG requires a browser environment. For Node/Bun server use, pipe toSVG() through @resvg/resvg-js.',
     );
   }
-  const svg = toSVG(model);
+  const svg = toSVG(model, theme);
   const blob = new Blob([svg], { type: 'image/svg+xml' });
   const url = URL.createObjectURL(blob);
 
@@ -410,7 +430,7 @@ export async function toPNG(model: DiagramModel): Promise<Blob> {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const scale = window.devicePixelRatio || 2;
+      const scale = window.devicePixelRatio || 1;
       canvas.width = img.naturalWidth * scale;
       canvas.height = img.naturalHeight * scale;
       const ctx = canvas.getContext('2d')!;

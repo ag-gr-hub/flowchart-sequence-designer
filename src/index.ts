@@ -18,6 +18,7 @@ export { toMermaid } from './exporters/mermaid.js';
 export { toPlantUML } from './exporters/plantuml.js';
 export { toJSON } from './exporters/json.js';
 export { toSVG, toPNG } from './exporters/svg.js';
+export type { SvgExportColors } from './exporters/svg.js';
 
 // Importers
 export { fromMermaid } from './importers/mermaid.js';
