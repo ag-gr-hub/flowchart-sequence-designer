@@ -4,6 +4,7 @@ import { sequence } from '../core/sequence.js';
 import { fromMermaid } from '../importers/mermaid.js';
 import { fromJSON } from '../importers/json.js';
 import { Model } from '../core/model.js';
+import { toSVG } from '../exporters/svg.js';
 
 describe('Round-trip: flowchart → Mermaid → model', () => {
   it('preserves node count', () => {
@@ -183,5 +184,38 @@ describe('Variant persistence', () => {
     const data = { type: 'flowchart' as const, variant: 'question' as const, nodes: [], edges: [] };
     const back = fromJSON(JSON.stringify(data)).toJSON();
     expect(back.variant).toBe('question');
+  });
+});
+
+describe('toSVG — theme overrides', () => {
+  const model = flowchart('Themed').node('a', 'Alpha').node('b', 'Beta').edge('a', 'b').getModel().toJSON();
+
+  it('default SVG uses default bg color', () => {
+    const svg = toSVG(model);
+    expect(svg).toContain('#fafbfc');
+  });
+
+  it('theme override replaces bg color', () => {
+    const svg = toSVG(model, { bg: '#ff0000' });
+    expect(svg).toContain('#ff0000');
+    expect(svg).not.toContain('"#fafbfc"');
+  });
+
+  it('theme override replaces edge color in arrowhead', () => {
+    const svg = toSVG(model, { edge: '#00ff00' });
+    expect(svg).toContain('#00ff00');
+  });
+
+  it('partial override only changes specified tokens', () => {
+    const svg = toSVG(model, { bg: '#123456' });
+    // dot color should still be the default
+    expect(svg).toContain('#dbe3ee');
+  });
+
+  it('override does not persist to the next call (no global state leak)', () => {
+    toSVG(model, { bg: '#abcdef' });
+    const svg2 = toSVG(model);
+    expect(svg2).toContain('#fafbfc');
+    expect(svg2).not.toContain('#abcdef');
   });
 });
