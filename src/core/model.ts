@@ -213,9 +213,7 @@ export class Model {
    */
   removeActor(name: string): this {
     this.data.actors = (this.data.actors ?? []).filter((a) => a !== name);
-    this.data.messages = (this.data.messages ?? []).filter(
-      (m) => m.from !== name && m.to !== name,
-    );
+    this.data.messages = (this.data.messages ?? []).filter((m) => m.from !== name && m.to !== name);
     return this;
   }
 
