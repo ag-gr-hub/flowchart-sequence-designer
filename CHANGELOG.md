@@ -6,6 +6,44 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-28
+
+### Added
+- `Model.clone()` for deep-copying a diagram model.
+- Mutation API on `Model`: `removeActor()`, `removeMessage()`, `updateMessage()`.
+  `addMessage()` now validates that referenced actors exist.
+- `toSVG()` / `toPNG()` accept a `theme`/colors parameter; new exported
+  `SvgExportColors` type for customizing export palettes.
+
+### Fixed
+- PNG export now falls back to 1x DPI when device pixel ratio is unavailable.
+- `SequenceEditor` uses shared `ACCENT` design tokens instead of hardcoded
+  INDIGO color constants.
+- CI dependency audit uses `bun audit` instead of `npm audit` (this is a
+  bun-lockfile project; `npm audit` failed with `ENOLOCK`).
+- Restored `package.json` version field, which a dependabot merge had
+  regressed from 1.2.4 back to 1.1.0.
+
+### Changed
+- Performance: `React.memo` applied to all child components; `nodeDims` map
+  memoized in `DiagramEditor`.
+- Dev/CI: bump `vite` to 8 (demo only), `actions/checkout` to v7,
+  `github/codeql-action` to 4.36.2; add `.nvmrc` and `CODEOWNERS`.
+- Docs: README table of contents + troubleshooting section; framework
+  wrapper links (Vue, Angular).
+
+## [1.2.4] - 2026-05-18
+
+### Changed
+- Docs: added "Supported Frameworks" section with Angular wrapper link;
+  allow iframe embedding of the demo.
+
+## [1.2.3] - 2026-05-18
+
+### Changed
+- Docs: CHANGELOG reorganized into versioned sections; added Security
+  section to README.
+
 ## [1.2.2] - 2026-05-18
 
 ### Fixed
@@ -220,6 +258,13 @@ production-ready for the documented surface area.
 - Diagram variants: `flowchart`, `question`, `journey`.
 - GitHub Pages live demo with developer docs.
 
-[Unreleased]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.2.4...v1.3.0
+[1.2.4]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.2.3...v1.2.4
+[1.2.3]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.2.2...v1.2.3
+[1.2.2]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.2.1...v1.2.2
+[1.2.1]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/ag-gr-hub/flowchart-sequence-designer/releases/tag/v0.1.0
