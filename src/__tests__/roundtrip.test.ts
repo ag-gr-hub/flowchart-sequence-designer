@@ -188,7 +188,12 @@ describe('Variant persistence', () => {
 });
 
 describe('toSVG — theme overrides', () => {
-  const model = flowchart('Themed').node('a', 'Alpha').node('b', 'Beta').edge('a', 'b').getModel().toJSON();
+  const model = flowchart('Themed')
+    .node('a', 'Alpha')
+    .node('b', 'Beta')
+    .edge('a', 'b')
+    .getModel()
+    .toJSON();
 
   it('default SVG uses default bg color', () => {
     const svg = toSVG(model);
