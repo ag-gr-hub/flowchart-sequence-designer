@@ -6,6 +6,14 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-08-09
+
+### Changed
+- Dev/CI only (no runtime or published-API changes): pin `brace-expansion`
+  to 5.0.9 via `overrides` to clear new high-severity advisories that were
+  failing `bun audit`; bump `codeql-action` (init/autobuild/analyze) to
+  v4.37.4 together; bump `actions/setup-node` to v7.
+
 ## [1.3.0] - 2026-06-28
 
 ### Added
@@ -258,7 +266,8 @@ production-ready for the documented surface area.
 - Diagram variants: `flowchart`, `question`, `journey`.
 - GitHub Pages live demo with developer docs.
 
-[Unreleased]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.2.4...v1.3.0
 [1.2.4]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/ag-gr-hub/flowchart-sequence-designer/compare/v1.2.2...v1.2.3
